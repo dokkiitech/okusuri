@@ -18,7 +18,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { PlusCircle, CheckCircle2, XCircle, Clock, Check, Users } from "lucide-react"
+import { PlusCircle, CheckCircle2, XCircle, Clock, Check, Users } from 'lucide-react'
 import { format, startOfDay, endOfDay, isWithinInterval } from "date-fns"
 import { ja } from "date-fns/locale"
 import {
@@ -378,45 +378,46 @@ export default function DashboardPage() {
                           {medication.remainingPills}錠
                         </span>
                       </div>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setMedicationToTake(medication)}
-                            disabled={isParentalView} // ペアレンタルモードでは無効化
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>服薬記録</DialogTitle>
-                            <DialogDescription>
-                              {medication.name}を服用したタイミングを選択してください。
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-2">
-                              {medication.frequency.map((timing) => (
-                                <Button
-                                  key={timing}
-                                  variant={selectedTiming === timing ? "default" : "outline"}
-                                  onClick={() => setSelectedTiming(timing)}
-                                  className="w-full"
-                                >
-                                  {timing}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
-                              服用を記録
+                      {!isParentalView && (
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setMedicationToTake(medication)}
+                            >
+                              <Check className="h-4 w-4" />
                             </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>服薬記録</DialogTitle>
+                              <DialogDescription>
+                                {medication.name}を服用したタイミングを選択してください。
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid grid-cols-2 gap-2">
+                                {medication.frequency.map((timing) => (
+                                  <Button
+                                    key={timing}
+                                    variant={selectedTiming === timing ? "default" : "outline"}
+                                    onClick={() => setSelectedTiming(timing)}
+                                    className="w-full"
+                                  >
+                                    {timing}
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
+                                服用を記録
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -502,4 +503,3 @@ export default function DashboardPage() {
     </div>
   )
 }
-

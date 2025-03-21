@@ -422,9 +422,18 @@ export default function MedicationsPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex flex-col gap-2">
-                <div className="flex justify-between w-full">
-                  {!isParentalView ? (
-                    <>
+                {isParentalView ? (
+                  // ペアレンタルモード時は閲覧モードボタンのみ表示
+                  <div className="w-full">
+                    <Button variant="outline" size="sm" className="w-full" disabled={true}>
+                      <Users className="h-4 w-4 mr-2" />
+                      閲覧モード
+                    </Button>
+                  </div>
+                ) : (
+                  // 通常モード時は全ての操作ボタンを表示
+                  <>
+                    <div className="flex justify-between w-full">
                       <Button variant="outline" size="sm" onClick={() => handleEditMedication(medication.id)}>
                         <Edit className="h-4 w-4 mr-2" />
                         編集
@@ -460,89 +469,80 @@ export default function MedicationsPage() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                    </>
-                  ) : (
-                    <div className="w-full">
-                      <Button variant="outline" size="sm" className="w-full" disabled={true}>
-                        <Users className="h-4 w-4 mr-2" />
-                        閲覧モード
-                      </Button>
                     </div>
-                  )}
-                </div>
-                {!isParentalView && (
-                  <div className="flex justify-between w-full mt-2">
-                    {/* 処方日数追加ボタン */}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" onClick={() => setMedicationToAddDays(medication)}>
-                          <PlusSquare className="h-4 w-4 mr-2" />
-                          処方追加
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>処方日数の追加</DialogTitle>
-                          <DialogDescription>{medication.name}の処方日数を追加します。</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="additionalDays" className="text-right">
-                              追加日数
-                            </Label>
-                            <Input
-                              id="additionalDays"
-                              type="number"
-                              min="1"
-                              value={additionalDays}
-                              onChange={(e) => setAdditionalDays(Number.parseInt(e.target.value) || 0)}
-                              className="col-span-3"
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button onClick={handleAddPrescriptionDays}>追加する</Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* 服薬記録ボタン */}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="default" size="sm" onClick={() => setMedicationToTake(medication)}>
-                          <Check className="h-4 w-4 mr-2" />
-                          服用
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>服薬記録</DialogTitle>
-                          <DialogDescription>
-                            {medication.name}を服用したタイミングを選択してください。
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-2 gap-2">
-                            {medication.frequency.map((timing) => (
-                              <Button
-                                key={timing}
-                                variant={selectedTiming === timing ? "default" : "outline"}
-                                onClick={() => setSelectedTiming(timing)}
-                                className="w-full"
-                              >
-                                {timing}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
-                            服用を記録
+                    <div className="flex justify-between w-full mt-2">
+                      {/* 処方日数追加ボタン */}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" onClick={() => setMedicationToAddDays(medication)}>
+                            <PlusSquare className="h-4 w-4 mr-2" />
+                            処方追加
                           </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>処方日数の追加</DialogTitle>
+                            <DialogDescription>{medication.name}の処方日数を追加します。</DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="additionalDays" className="text-right">
+                                追加日数
+                              </Label>
+                              <Input
+                                id="additionalDays"
+                                type="number"
+                                min="1"
+                                value={additionalDays}
+                                onChange={(e) => setAdditionalDays(Number.parseInt(e.target.value) || 0)}
+                                className="col-span-3"
+                              />
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button onClick={handleAddPrescriptionDays}>追加する</Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+
+                      {/* 服薬記録ボタン */}
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="default" size="sm" onClick={() => setMedicationToTake(medication)}>
+                            <Check className="h-4 w-4 mr-2" />
+                            服用
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>服薬記録</DialogTitle>
+                            <DialogDescription>
+                              {medication.name}を服用したタイミングを選択してください。
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-2">
+                              {medication.frequency.map((timing) => (
+                                <Button
+                                  key={timing}
+                                  variant={selectedTiming === timing ? "default" : "outline"}
+                                  onClick={() => setSelectedTiming(timing)}
+                                  className="w-full"
+                                >
+                                  {timing}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
+                              服用を記録
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </>
                 )}
               </CardFooter>
             </Card>
