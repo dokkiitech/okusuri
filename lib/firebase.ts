@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app"
-import { getAuth } from "firebase/auth"
-import { getFirestore } from "firebase/firestore"
-import { getMessaging } from "firebase/messaging"
+import { getAuth, type Auth } from "firebase/auth"
+import { getFirestore, type Firestore } from "firebase/firestore"
+import { getMessaging, type Messaging } from "firebase/messaging"
 
 // Firebase設定
 const firebaseConfig = {
@@ -13,18 +13,17 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-// Firebaseアプリの初期化
-let app
-let auth
-let db
-let messaging
+// Firebaseの初期化
+let app: ReturnType<typeof initializeApp> | undefined
+let auth: Auth | undefined
+let db: Firestore | undefined
+let messaging: Messaging | undefined
 
 // クライアントサイドのみで実行
 if (typeof window !== "undefined") {
   try {
     // Firebaseアプリの初期化
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
-
     // Auth, Firestoreの初期化
     auth = getAuth(app)
     db = getFirestore(app)

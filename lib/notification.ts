@@ -7,6 +7,7 @@ export const requestNotificationPermission = async () => {
 
   try {
     const permission = await Notification.requestPermission()
+    console.log("通知許可状態:", permission)
     return permission === "granted"
   } catch (error) {
     console.error("通知許可の要求に失敗しました:", error)

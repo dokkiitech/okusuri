@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アイコン生成</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .icon-preview {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    .icon-item {
+      text-align: center;
+    }
+    button {
+      background: #4F46E5;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>PWAアイコン生成</h1>
+  <p>SVGアイコンから各サイズのPNGアイコンを生成します。</p>
+  
+  <div class="icon-preview">
+    <div class="icon-item">
+      <canvas id="canvas192" width="192" height="192"></canvas>
+      <p>192x192</p>
+    </div>
+    <div class="icon-item">
+      <canvas id="canvas512" width="512" height="512"></canvas>
+      <p>512x512</p>
+    </div>
+  </div>
+  
+  <button id="downloadAll">すべてのアイコンをダウンロード</button>
+
+  <script>
+    // SVGをロード
+    const svgURL = '/icon.svg';
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    
+    img.onload = function() {
+      // 各キャンバスに描画
+      const canvas192 = document.getElementById('canvas192');
+      const ctx192 = canvas192.getContext('2d');
+      ctx192.drawImage(img, 0, 0, 192, 192);
+      
+      const canvas512 = document.getElementById('canvas512');
+      const ctx512 = canvas512.getContext('2d');
+      ctx512.drawImage(img, 0, 0, 512, 512);
+    };
+    
+    img.src = svgURL;
+    
+    // ダウンロードボタン
+    document.getElementById('downloadAll').addEventListener('click', function() {
+      // 192x192
+      const link192 = document.createElement('a');
+      link192.download = 'icon-192x192.png';
+      link192.href = document.getElementById('canvas192').toDataURL('image/png');
+      link192.click();
+      
+      // 512x512
+      const link512 = document.createElement('a');
+      link512.download = 'icon-512x512.png';
+      link512.href = document.getElementById('canvas512').toDataURL('image/png');
+      link512.click();
+    });
+  </script>
+</body>
+</html>
+

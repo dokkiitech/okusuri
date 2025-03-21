@@ -209,6 +209,16 @@ export default function CalendarPage() {
   const handleTakeMedication = async () => {
     if (!medicationToTake || !selectedTiming || !db || !user || !selectedDay) return
 
+    // ペアレンタルモードでの服薬記録を禁止
+    if (isParentalView) {
+      toast({
+        title: "権限エラー",
+        description: "ペアレンタルコントロールモードでは服薬記録を追加できません",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
       const now = selectedDay
 
@@ -403,52 +413,65 @@ export default function CalendarPage() {
                 <div className="text-center py-4 text-muted-foreground">この日の服薬記録はありません</div>
               )}
 
-              <div className="mt-4">
-                <h3 className="text-lg font-medium mb-2">服薬を記録する</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {medications.map((medication) => (
-                    <Dialog key={medication.id}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start"
-                          onClick={() => setMedicationToTake(medication)}
-                        >
-                          <span className="truncate">{medication.name}</span>
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>服薬記録</DialogTitle>
-                          <DialogDescription>
-                            {medication.name}を{format(selectedDay, "yyyy年MM月dd日", { locale: ja })}
-                            に服用したタイミングを選択してください。
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-2 gap-2">
-                            {medication.frequency.map((timing) => (
-                              <Button
-                                key={timing}
-                                variant={selectedTiming === timing ? "default" : "outline"}
-                                onClick={() => setSelectedTiming(timing)}
-                                className="w-full"
-                              >
-                                {timing}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
-                            服用を記録
+              {/* ペアレンタルモードでない場合のみ服薬記録セクションを表示 */}
+              {!isParentalView && (
+                <div className="mt-4">
+                  <h3 className="text-lg font-medium mb-2">服薬を記録する</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {medications.map((medication) => (
+                      <Dialog key={medication.id}>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="w-full justify-start"
+                            onClick={() => setMedicationToTake(medication)}
+                          >
+                            <span className="truncate">{medication.name}</span>
                           </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  ))}
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>服薬記録</DialogTitle>
+                            <DialogDescription>
+                              {medication.name}を{format(selectedDay, "yyyy年MM月dd日", { locale: ja })}
+                              に服用したタイミングを選択してください。
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-2">
+                              {medication.frequency.map((timing) => (
+                                <Button
+                                  key={timing}
+                                  variant={selectedTiming === timing ? "default" : "outline"}
+                                  onClick={() => setSelectedTiming(timing)}
+                                  className="w-full"
+                                >
+                                  {timing}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
+                              服用を記録
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {/* ペアレンタルモードの場合は閲覧専用メッセージを表示 */}
+              {isParentalView && (
+                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-md">
+                  <div className="flex items-center text-blue-700 dark:text-blue-300">
+                    <Users className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
+                    <p>ペアレンタルコントロールモードでは服薬記録の追加はできません</p>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

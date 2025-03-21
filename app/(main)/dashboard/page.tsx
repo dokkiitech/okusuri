@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "@/hooks/use-toast"
 import { AccountSwitcher } from "@/components/account-switcher"
+import { ErrorHandler } from "@/components/error-handler"
 
 interface Medication {
   id: string
@@ -69,6 +70,9 @@ export default function DashboardPage() {
   const [selectedTiming, setSelectedTiming] = useState<string>("")
   const [selectedUserId, setSelectedUserId] = useState<string>("")
   const [isParentalView, setIsParentalView] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const resetError = () => setError(null)
 
   useEffect(() => {
     if (!user) return
@@ -114,7 +118,7 @@ export default function DashboardPage() {
         const startOfToday = startOfDay(today)
         const endOfToday = endOfDay(today)
 
-        // 選択されたユーザーIDで服薬記録を取得（orderByなし）
+        // 選択されたユーザーIDで服薬記録を取得
         const recordsQuery = query(collection(db, "medicationRecords"), where("userId", "==", selectedUserId))
 
         const recordsSnapshot = await getDocs(recordsQuery)
@@ -155,6 +159,7 @@ export default function DashboardPage() {
         setIsParentalView(selectedUserId !== user.uid)
       } catch (error) {
         console.error("データの取得に失敗しました:", error)
+        setError(error instanceof Error ? error : new Error(String(error)))
       } finally {
         setLoading(false)
       }
@@ -169,6 +174,16 @@ export default function DashboardPage() {
 
   const handleTakeMedication = async () => {
     if (!medicationToTake || !selectedTiming || !db || !user) return
+
+    // ペアレンタルモードでの服薬記録を禁止
+    if (isParentalView) {
+      toast({
+        title: "権限エラー",
+        description: "ペアレンタルコントロールモードでは服薬記録を追加できません",
+        variant: "destructive",
+      })
+      return
+    }
 
     try {
       const now = new Date()
@@ -262,6 +277,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <ErrorHandler error={error} resetError={resetError} />
+
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">ダッシュボード</h1>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -363,7 +380,12 @@ export default function DashboardPage() {
                       </div>
                       <Dialog>
                         <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => setMedicationToTake(medication)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setMedicationToTake(medication)}
+                            disabled={isParentalView} // ペアレンタルモードでは無効化
+                          >
                             <Check className="h-4 w-4" />
                           </Button>
                         </DialogTrigger>
@@ -448,6 +470,7 @@ export default function DashboardPage() {
                                   setMedicationToTake(med)
                                   setSelectedTiming(timing)
                                 }}
+                                disabled={isParentalView} // ペアレンタルモードでは無効化
                               >
                                 <Check className="h-4 w-4" />
                               </Button>

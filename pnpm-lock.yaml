@@ -111,7 +111,7 @@ importers:
         specifier: 8.5.1
         version: 8.5.1(react@19.0.0)
       firebase:
-        specifier: latest
+        specifier: ^11.4.0
         version: 11.4.0
       input-otp:
         specifier: 1.4.1

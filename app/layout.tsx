@@ -10,13 +10,12 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "服薬管理アプリ",
-  description: "お薬の服用を簡単に管理できるアプリです",
+  description: "お薬の服用を簡単に管理できるアプリ���す",
   manifest: "/manifest.json",
   icons: [
-    { rel: "icon", url: "/favicon.ico" },
+    { rel: "icon", url: "/icon.svg", type: "image/svg+xml" },
     { rel: "apple-touch-icon", url: "/icon-192x192.png" },
   ],
-    generator: 'v0.dev'
 }
 
 export const viewport: Viewport = {
@@ -24,28 +23,25 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#ffffff",
+  themeColor: "#4F46E5",
 }
 
 export default function RootLayout({
-  children,
-}: Readonly<{
+                                     children,
+                                   }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ja" suppressHydrationWarning>
+      <html lang="ja" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </ThemeProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <AuthProvider>
+          {children}
+          <Toaster />
+        </AuthProvider>
+      </ThemeProvider>
       </body>
-    </html>
+      </html>
   )
 }
 
-
-
-import './globals.css'

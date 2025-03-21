@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/hooks/use-toast"
-import { Pill } from "lucide-react"
+import { auth } from "@/lib/firebase"
 
 const loginFormSchema = z.object({
   email: z.string().email("有効なメールアドレスを入力してください"),
@@ -22,22 +22,23 @@ const loginFormSchema = z.object({
 type LoginFormValues = z.infer<typeof loginFormSchema>
 
 export default function LoginPage() {
-  const { signIn, user } = useAuth()
+  const { signIn } = useAuth()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
+  const [firebaseInitialized, setFirebaseInitialized] = useState<boolean>(false)
+  const [envVars, setEnvVars] = useState<string>("")
 
   useEffect(() => {
-    setMounted(true)
+    // Firebase初期化状態を確認
+    setFirebaseInitialized(!!auth)
+
+    // 環境変数の確認（APIキーは部分的に表示）
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "未設定"
+    const maskedApiKey = apiKey.substring(0, 4) + "..." + apiKey.substring(apiKey.length - 4)
+
+    setEnvVars(`API Key: ${maskedApiKey}, Auth Domain: ${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "未設定"}`)
   }, [])
-
-  useEffect(() => {
-    // クライアントサイドでのみ実行し、ユーザーがログイン済みならダッシュボードへリダイレクト
-    if (mounted && user) {
-      router.push("/dashboard")
-    }
-  }, [user, router, mounted])
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -52,8 +53,9 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log("Login attempt with:", data.email)
+      console.log("ログイン試行:", data.email)
       await signIn(data.email, data.password)
+      console.log("ログイン成功")
       toast({
         title: "ログイン成功",
         description: "アプリにログインしました",
@@ -73,7 +75,7 @@ export default function LoginPage() {
         errorMessage = "ネットワークエラーが発生しました。インターネット接続を確認してください"
       }
 
-      setError(errorMessage)
+      setError(`${errorMessage} (${error.code || "不明なエラー"})`)
       toast({
         title: "エラー",
         description: errorMessage,
@@ -84,74 +86,80 @@ export default function LoginPage() {
     }
   }
 
-  if (!mounted) {
-    return null
-  }
-
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-center mb-4">
-            <div className="bg-primary p-2 rounded-full">
-              <Pill className="h-6 w-6 text-primary-foreground" />
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl text-center">服薬管理アプリ</CardTitle>
+            <CardDescription className="text-center">アカウントにログインして服薬管理を始めましょう</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!firebaseInitialized && (
+                <div className="p-2 bg-amber-50 text-amber-700 rounded-md text-sm mb-4">
+                  <p>Firebase認証が初期化されていません。環境変数を確認してください。</p>
+                  <p className="text-xs mt-1">{envVars}</p>
+                  <Link href="/debug" className="text-xs text-blue-600 hover:underline block mt-1">
+                    詳細な環境変数情報を確認
+                  </Link>
+                </div>
+            )}
+
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>メールアドレス</FormLabel>
+                          <FormControl>
+                            <Input placeholder="your-email@example.com" {...field} autoComplete="email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>パスワード</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="******" {...field} autoComplete="current-password" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+                <Button type="submit" className="w-full" disabled={isLoading || !firebaseInitialized}>
+                  {isLoading ? "ログイン中..." : "ログイン"}
+                </Button>
+              </form>
+            </Form>
+            <div className="text-center">
+              <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+                パスワードをお忘れですか？
+              </Link>
             </div>
-          </div>
-          <CardTitle className="text-2xl text-center">服薬管理アプリ</CardTitle>
-          <CardDescription className="text-center">アカウントにログインして服薬管理を始めましょう</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>メールアドレス</FormLabel>
-                    <FormControl>
-                      <Input placeholder="your-email@example.com" {...field} autoComplete="email" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>パスワード</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="******" {...field} autoComplete="current-password" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "ログイン中..." : "ログイン"}
-              </Button>
-            </form>
-          </Form>
-          <div className="text-center">
-            <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-              パスワードをお忘れですか？
-            </Link>
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <div className="text-center text-sm">
-            アカウントをお持ちでない場合は
-            <Link href="/register" className="text-primary hover:underline ml-1">
-              新規登録
-            </Link>
-            してください
-          </div>
-        </CardFooter>
-      </Card>
-    </div>
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-4">
+            <div className="text-center text-sm">
+              アカウントをお持ちでない場合は
+              <Link href="/register" className="text-primary hover:underline ml-1">
+                新規登録
+              </Link>
+              してください
+            </div>
+            <div className="text-center text-xs text-muted-foreground">
+              <Link href="/debug" className="hover:underline">
+                環境変数情報
+              </Link>
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
   )
 }
 

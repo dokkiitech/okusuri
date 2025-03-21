@@ -31,6 +31,7 @@ export function AccountSwitcher({ currentUserId, onAccountChange }: AccountSwitc
 
     const fetchLinkedAccounts = async () => {
       try {
+        setLoading(true)
         // 自分のユーザー設定を取得
         const settingsDoc = await getDoc(doc(db, "userSettings", user.uid))
 
@@ -88,38 +89,38 @@ export function AccountSwitcher({ currentUserId, onAccountChange }: AccountSwitc
   const selectedAccount = accounts.find((account) => account.uid === currentUserId) || accounts[0]
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
-          <User className="mr-2 h-4 w-4" />
-          {selectedAccount.displayName}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
-        <Command>
-          <CommandInput placeholder="アカウントを検索..." />
-          <CommandList>
-            <CommandEmpty>アカウントが見つかりません</CommandEmpty>
-            <CommandGroup>
-              {accounts.map((account) => (
-                <CommandItem
-                  key={account.uid}
-                  value={account.uid}
-                  onSelect={() => {
-                    onAccountChange(account.uid)
-                    setOpen(false)
-                  }}
-                >
-                  <Check className={cn("mr-2 h-4 w-4", currentUserId === account.uid ? "opacity-100" : "opacity-0")} />
-                  {account.displayName}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
+            <User className="mr-2 h-4 w-4" />
+            {selectedAccount.displayName}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[200px] p-0">
+          <Command>
+            <CommandInput placeholder="アカウントを検索..." />
+            <CommandList>
+              <CommandEmpty>アカウントが見つかりません</CommandEmpty>
+              <CommandGroup>
+                {accounts.map((account) => (
+                    <CommandItem
+                        key={account.uid}
+                        value={account.uid}
+                        onSelect={() => {
+                          onAccountChange(account.uid)
+                          setOpen(false)
+                        }}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", currentUserId === account.uid ? "opacity-100" : "opacity-0")} />
+                      {account.displayName}
+                    </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
   )
 }
 
