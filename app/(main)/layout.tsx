@@ -7,7 +7,7 @@ import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
-import { Calendar, Home, PillIcon, Settings, Menu } from "lucide-react"
+import { Calendar, Home, PillIcon, Settings, Menu, MessageSquare } from "lucide-react"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -46,6 +46,7 @@ export default function MainLayout({
   const navItems = [
     { href: "/dashboard", label: "ホーム", icon: Home },
     { href: "/medications", label: "お薬", icon: PillIcon },
+    { href: "/interaction-check", label: "飲み合わせチェック", icon: MessageSquare },
     { href: "/calendar", label: "カレンダー", icon: Calendar },
     { href: "/settings", label: "設定", icon: Settings },
   ]
