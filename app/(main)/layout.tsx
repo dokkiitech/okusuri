@@ -46,7 +46,7 @@ export default function MainLayout({
   const navItems = [
     { href: "/dashboard", label: "ホーム", icon: Home },
     { href: "/medications", label: "お薬", icon: PillIcon },
-    { href: "/interaction-check", label: "飲み合わせチェック", icon: MessageSquare },
+    { href: "/interaction-check", label: "AIに質問", icon: MessageSquare },
     { href: "/calendar", label: "カレンダー", icon: Calendar },
     { href: "/settings", label: "設定", icon: Settings },
   ]
