@@ -1,4 +1,4 @@
-import *admin from "firebase-admin";
+import * as admin from "firebase-admin";
 // import { Timestamp } from "firebase-admin/firestore"; // If needed for more complex timestamp operations
 
 // --- Configuration ---
@@ -70,7 +70,8 @@ async function checkAndSendReminders() {
 
     const notificationPromises: Promise<string | admin.messaging.MessagingDevicesResponse>[] = [];
 
-    settingsSnapshot.forEach((userSettingDoc) => {
+    settingsSnapshot.forEach((userSettingDoc: admin.firestore.QueryDocumentSnapshot) => {
+
       const settings = userSettingDoc.data() as UserSetting;
       const userId = userSettingDoc.id;
 
