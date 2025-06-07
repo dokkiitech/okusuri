@@ -39,6 +39,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} << 'EOF'
             cd /root/okusuri
             pnpm install
+            git pull origin main
             pnpm build
             pm2 restart okusurikanri
           EOF
