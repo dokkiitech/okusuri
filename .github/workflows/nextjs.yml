@@ -27,7 +27,7 @@ jobs:
           node-version: "20"
           cache: pnpm
 
-      - name: Install pnpm and add to PATH manually
+      - name: Install pnpm and add to PATH
         run: |
           npm install -g pnpm
           echo "$(npm bin -g)" >> $GITHUB_PATH
@@ -85,8 +85,6 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no root@your.debian.server.ip << 'EOF'
             cd /root/okusuri
-            npm install -g pnpm
-            export PATH=\$PATH:\$(npm bin -g)
             pnpm install
             pnpm build
             pm2 restart okusurikanri
