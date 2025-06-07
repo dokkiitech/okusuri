@@ -14,9 +14,6 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectItem } from "@/components/ui/select"
-import { useIsMobile } from "@/components/ui/use-mobile"
 import { Switch } from "@/components/ui/switch"
 import { generateLinkCode } from "@/lib/utils"
 import { Copy, Unlink } from "lucide-react"
@@ -58,15 +55,6 @@ export default function SettingsPage() {
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
   const [inputLinkCode, setInputLinkCode] = useState("")
   const [accountToUnlink, setAccountToUnlink] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("reminders")
-  const isMobile = useIsMobile()
-
-  const tabDefinitions = [
-    { value: "reminders", label: "リマインダー設定" },
-    { value: "notifications", label: "通知設定" },
-    { value: "account", label: "アカウント設定" },
-    { value: "parental", label: "ペアレンタルコントロール" },
-  ]
 
   const reminderForm = useForm<z.infer<typeof reminderFormSchema>>({
     resolver: zodResolver(reminderFormSchema),
@@ -552,11 +540,6 @@ export default function SettingsPage() {
     })
   }
 
-  // タブ切り替え時のハンドラー
-  const handleTabChange = (value: string) => {
-    setActiveTab(value)
-  }
-
   if (loading) {
     return (
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
@@ -569,40 +552,10 @@ export default function SettingsPage() {
       <div className="space-y-6">
         <h1 className="text-3xl font-bold tracking-tight">設定</h1>
 
-        {isMobile ? (
-          <div className="mb-4">
-            <Select onValueChange={handleTabChange} value={activeTab}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="設定セクションを選択" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {tabDefinitions.map((tab) => (
-                    <SelectItem key={tab.value} value={tab.value}>
-                      {tab.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-        ) : (
-          <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="mb-4 flex-wrap">
-              {tabDefinitions.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value}>
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        )}
-
-        {/* Content sections based on activeTab */}
-        {activeTab === "reminders" && (
-            <Card>
-                <CardHeader>
-                  <CardTitle>リマインダー時間設定</CardTitle>
+        {/* Content sections */}
+        <Card>
+            <CardHeader>
+                <CardTitle>リマインダー時間設定</CardTitle>
                   <CardDescription>各服用タイミングのリマインダー時間を設定します</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -673,10 +626,8 @@ export default function SettingsPage() {
                   </Form>
                 </CardContent>
               </Card>
-          )}
 
-          {activeTab === "notifications" && (
-              <Card>
+          <Card>
                 <CardHeader>
                   <CardTitle>通知設定</CardTitle>
                   <CardDescription>アプリからの通知設定を管理します</CardDescription>
@@ -703,10 +654,8 @@ export default function SettingsPage() {
                   </div>
                 </CardContent>
               </Card>
-          )}
 
-          {activeTab === "account" && (
-              <Card>
+          <Card>
                 <CardHeader>
                   <CardTitle>アカウント設定</CardTitle>
                   <CardDescription>アカウント情報を管理します</CardDescription>
@@ -743,10 +692,8 @@ export default function SettingsPage() {
                   </Form>
                 </CardContent>
               </Card>
-          )}
 
-          {activeTab === "parental" && (
-              <Card>
+          <Card>
                 <CardHeader>
                   <CardTitle>ペアレンタルコントロール</CardTitle>
                   <CardDescription>家族の服薬状況を管理します</CardDescription>
@@ -831,8 +778,6 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
           )}
-        {/* The closing </Tabs> tag is removed here if isMobile is true, so we ensure content is always rendered */}
-        {/* For non-mobile, Tabs component is closed above */}
       </div>
   )
 }
