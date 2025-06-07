@@ -68,10 +68,9 @@ async function checkAndSendReminders() {
       return;
     }
 
-    const notificationPromises: Promise<string | admin.messaging.MessagingDevicesResponse>[] = [];
+    const notificationPromises: Promise<string>[] = [];
 
     settingsSnapshot.forEach((userSettingDoc: admin.firestore.QueryDocumentSnapshot) => {
-
       const settings = userSettingDoc.data() as UserSetting;
       const userId = userSettingDoc.id;
 
@@ -113,7 +112,8 @@ async function sendFcmNotification(
   title: string,
   body: string,
   sessionKey: string,
-): Promise<string | admin.messaging.MessagingDevicesResponse> {
+
+): Promise<string> {
   try {
     const tokenDoc = await db.collection("userTokens").doc(userId).get();
     if (!tokenDoc.exists) {
