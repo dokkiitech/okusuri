@@ -112,6 +112,7 @@ async function sendFcmNotification(
   title: string,
   body: string,
   sessionKey: string,
+
 ): Promise<string> {
   try {
     const tokenDoc = await db.collection("userTokens").doc(userId).get();
