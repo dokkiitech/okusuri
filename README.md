@@ -1,21 +1,21 @@
-# Medication Management Application
+# 服薬管理アプリケーション
 
-## 1. Project Overview
+## 1. プロジェクト概要
 
-This is a medication management application designed to help users track their medications, schedules, and adherence. Key features include medication logging, scheduling, reminders (via push notifications), and parental control for managing dependents' medication.
+これは、ユーザーがお薬の服用状況、スケジュール、服薬遵守を記録・管理するのを支援するための服薬管理アプリケーションです。主な機能には、服薬記録、スケジュール管理、リマインダー（プッシュ通知経由）、および扶養家族の服薬管理のためのペアレンタルコントロール機能が含まれます。
 
-The application consists of a Next.js frontend and an optional server-side script for sending scheduled push notification reminders.
+このアプリケーションは、Next.jsフロントエンドと、オプションでスケジュールされたプッシュ通知リマインダーを送信するためのサーバーサイドスクリプトで構成されています。
 
-## 2. Next.js Application (Frontend)
+## 2. Next.js アプリケーション (フロントエンド)
 
-### Prerequisites
-- Node.js (latest LTS version recommended)
-- pnpm (or npm/yarn)
+### 前提条件
+- Node.js (最新LTS版を推奨)
+- pnpm (または npm/yarn)
 
-### Environment Variables
-Create a `.env.local` file in the root of the Next.js application directory. This file will store your Firebase client-side configuration.
+### 環境変数
+Next.jsアプリケーションのルートディレクトリに `.env.local` ファイルを作成してください。このファイルにはFirebaseクライアントサイド設定を保存します。
 
-**Essential Firebase Variables:**
+**必要なFirebase環境変数:**
 ```env
 NEXT_PUBLIC_FIREBASE_API_KEY="YOUR_API_KEY"
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="YOUR_AUTH_DOMAIN"
@@ -24,44 +24,44 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="YOUR_STORAGE_BUCKET"
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="YOUR_MESSAGING_SENDER_ID"
 NEXT_PUBLIC_FIREBASE_APP_ID="YOUR_APP_ID"
 
-# This VAPID key is crucial for Web Push Notifications (Firebase Cloud Messaging)
-# Generate this in your Firebase project settings: Project settings > Cloud Messaging > Web configuration > Web Push certificates
+# このVAPIDキーはWebプッシュ通知 (Firebase Cloud Messaging) に不可欠です
+# Firebaseプロジェクト設定で生成してください: プロジェクト設定 > Cloud Messaging > ウェブ設定 > ウェブプッシュ証明書
 NEXT_PUBLIC_FIREBASE_VAPID_KEY="YOUR_VAPID_KEY"
 ```
-Replace `"YOUR_..."` with your actual Firebase project credentials.
+`"YOUR_..."` の部分を実際のFirebaseプロジェクトの認証情報に置き換えてください。
 
-### Development
-1.  **Install dependencies:**
+### 開発
+1.  **依存関係のインストール:**
     ```bash
     pnpm install
-    # Or: npm install
+    # または: npm install
     ```
-2.  **Run the development server:**
+2.  **開発サーバーの実行:**
     ```bash
     pnpm dev
-    # Or: npm run dev
+    # または: npm run dev
     ```
-    The application will typically be available at `http://localhost:3000`.
+    通常、アプリケーションは `http://localhost:3000` で利用可能になります。
 
-### Production Build & Run
-1.  **Build the application:**
+### 本番ビルドと実行
+1.  **アプリケーションのビルド:**
     ```bash
     pnpm build
-    # Or: npm run build
+    # または: npm run build
     ```
-2.  **Start the production server:**
+2.  **本番サーバーの起動:**
     ```bash
     pnpm start
-    # Or: npm run start
+    # または: npm run start
     ```
 
-### Deployment with PM2 (Optional for Production Servers)
-For managing the Next.js production process on a server, PM2 is a recommended process manager.
+### PM2を使った運用 (本番サーバー向けオプション)
+サーバー上でNext.jsの本番プロセスを管理するために、PM2は推奨されるプロセス管理ツールです。
 ```bash
-# Example: Start the app using pnpm's start script
+# 例: pnpm の start スクリプトを使ってアプリを起動
 pm2 start pnpm --name "medication-app" -- run start
 
-# Or, create an ecosystem.config.js file for more complex configurations:
+# または、より複雑な設定のために ecosystem.config.js ファイルを作成します:
 # module.exports = {
 #   apps : [{
 #     name   : "medication-app",
@@ -75,101 +75,101 @@ pm2 start pnpm --name "medication-app" -- run start
 # pm2 start ecosystem.config.js --env production
 ```
 
-## 3. Server-Side Reminder Script (`server_reminder_script_example.ts`)
+## 3. サーバーサイド・リマインダースクリプト (`server_reminder_script_example.ts`)
 
-### Purpose
-This script sends scheduled push notifications for medication reminders. It uses `firebase-admin` to interact with Firestore and FCM. **This script is designed to run on a user-managed server (e.g., a VPS, dedicated server, or a Raspberry Pi) and is separate from the Next.js application hosting (like Vercel).** Vercel serverless functions have execution time limits that might not be suitable for a continuously running cron-like job, and this script provides an alternative for users who manage their own servers.
+### 目的
+このスクリプトは、スケジュールされた服薬リマインダーのプッシュ通知を送信します。FirestoreおよびFCMとの連携に `firebase-admin` を使用します。**このスクリプトは、ユーザーが管理するサーバー（VPS、専用サーバー、Raspberry Piなど）で実行されるように設計されており、Next.jsアプリケーションのホスティング（Vercelなど）とは別個のものです。** Vercelのサーバーレス関数には実行時間制限があり、継続的に実行されるcronのようなジョブには適していない場合があるため、このスクリプトは独自のサーバーを管理するユーザー向けの代替手段を提供します。
 
-### Prerequisites (on the server)
-- Node.js (latest LTS version recommended)
-- npm or pnpm
-- A Firebase Service Account Key JSON file for your project.
+### 前提条件 (サーバー側)
+- Node.js (最新LTS版を推奨)
+- npm または pnpm
+- プロジェクト用のFirebaseサービスアカウントキー (JSONファイル)
 
-### Setup Steps
+### セットアップ手順
 
-1.  **Place Script & Service Account Key:**
-    -   Copy `server_reminder_script_example.ts` (from the repository root) to a directory on your server (e.g., `/opt/medication-reminder/`).
-    -   Download your Firebase service account key JSON file from your Firebase Project Settings (`Project settings > Service accounts > Generate new private key`).
-    -   Place this key file (e.g., `your-service-account-key.json`) in the same directory.
-    -   **IMPORTANT: Secure this service account key file. Set appropriate file permissions (e.g., `chmod 600 your-service-account-key.json`) and ensure it's not publicly accessible.**
+1.  **スクリプトとサービスアカウントキーの配置:**
+    -   `server_reminder_script_example.ts` (リポジトリルートから) をサーバー上のディレクトリ (例: `/opt/medication-reminder/`) にコピーします。
+    -   Firebaseプロジェクト設定 (`プロジェクト設定 > サービスアカウント > 新しい秘密鍵を生成`) からFirebaseサービスアカウントキーのJSONファイルをダウンロードします。
+    -   このキーファイル (例: `your-service-account-key.json`) を同じディレクトリに配置します。
+    -   **重要: このサービスアカウントキーファイルを安全に保管してください。適切なファイル権限を設定し (例: `chmod 600 your-service-account-key.json`)、公開アクセスできないようにしてください。**
 
-2.  **Install Dependencies:**
-    -   Navigate to the directory where you placed the script (e.g., `/opt/medication-reminder/`):
+2.  **依存関係のインストール:**
+    -   スクリプトを配置したディレクトリ (例: `/opt/medication-reminder/`) に移動します:
         ```bash
         cd /opt/medication-reminder/
         ```
-    -   Initialize a `package.json` and install necessary dependencies:
+    -   `package.json` を初期化し、必要な依存関係をインストールします:
         ```bash
         npm init -y
         npm install firebase-admin typescript ts-node
-        # Or, if you prefer to compile to JavaScript first and run with node:
+        # または、先にJavaScriptにコンパイルしてnodeで実行する場合:
         # npm install firebase-admin typescript
         ```
 
-3.  **Configure Service Account Key Path:**
-    -   The script uses the `GOOGLE_APPLICATION_CREDENTIALS` environment variable by default.
-    -   Set this variable to the full path of your service account key JSON file. Add this line to your shell's profile (e.g., `~/.bashrc`, `~/.zshrc`) or set it directly in your cron job line.
+3.  **サービスアカウントキーパスの設定:**
+    -   スクリプトはデフォルトで `GOOGLE_APPLICATION_CREDENTIALS` 環境変数を使用します。
+    -   この環境変数をサービスアカウントキーJSONファイルのフルパスに設定します。この行をシェルのプロファイル (例: `~/.bashrc`, `~/.zshrc`) に追加するか、cronジョブの実行行で直接設定します。
         ```bash
         export GOOGLE_APPLICATION_CREDENTIALS="/opt/medication-reminder/your-service-account-key.json"
         ```
-        (Remember to `source ~/.bashrc` or log out/in for the change to take effect in new sessions).
-    -   Alternatively (less secure, not recommended for production), you can modify the `SERVICE_ACCOUNT_KEY_PATH` variable directly in `server_reminder_script_example.ts`.
+        (変更を新しいセッションで有効にするには、`source ~/.bashrc` を実行するか、ログアウト/ログインすることを忘れないでください。)
+    -   または (セキュリティ上推奨されず、本番環境では非推奨)、`server_reminder_script_example.ts` 内の `SERVICE_ACCOUNT_KEY_PATH` 変数を直接変更することもできます。
 
-4.  **Manual Test Run:**
-    -   Before setting up a cron job, test the script manually:
-    -   **Using ts-node (recommended for development/testing):**
+4.  **手動テスト実行:**
+    -   cronジョブを設定する前に、スクリプトを手動でテストします:
+    -   **ts-node を使用 (開発/テストに推奨):**
         ```bash
-        # Ensure GOOGLE_APPLICATION_CREDENTIALS is set in your current session
+        # 現在のセッションで GOOGLE_APPLICATION_CREDENTIALS が設定されていることを確認
         npx ts-node server_reminder_script_example.ts
         ```
-    -   **Compile to JavaScript then run (for production or if ts-node is not preferred):**
+    -   **JavaScriptにコンパイルしてから実行 (本番環境、またはts-nodeを好まない場合):**
         ```bash
-        # (Optional) Create a tsconfig.json if you don't have one: npx tsc --init
-        # Compile the TypeScript file to JavaScript
+        # (任意) tsconfig.json がない場合は作成: npx tsc --init
+        # TypeScriptファイルをJavaScriptにコンパイル
         npx tsc server_reminder_script_example.ts
-        # Run the compiled JavaScript file
+        # コンパイルされたJavaScriptファイルを実行
         node server_reminder_script_example.js
         ```
-    -   Check the console output for "Firebase Admin SDK initialized successfully," "Match found for user...", or "No matching reminders..." messages and any errors.
+    -   コンソール出力で "Firebase Admin SDK initialized successfully."、"Match found for user..."、または "No matching reminders..." といったメッセージやエラーが表示されないか確認します。
 
-### Periodic Execution (Cron Job)
-To run the script automatically at regular intervals (e.g., every 5 minutes), use a cron job.
+### 定期実行 (Cronジョブ)
+スクリプトを一定間隔 (例: 5分ごと) で自動実行するには、cronジョブを使用します。
 
-1.  Open your crontab for editing:
+1.  crontabを編集用に開きます:
     ```bash
     crontab -e
     ```
-2.  Add a line to schedule the script. Adjust paths and schedule as needed.
-    -   **Example using `ts-node` (runs every 5 minutes):**
+2.  スクリプトをスケジュールする行を追加します。パスやスケジュールは必要に応じて調整してください。
+    -   **`ts-node` を使用する例 (5分ごとに実行):**
         ```cron
         */5 * * * * export GOOGLE_APPLICATION_CREDENTIALS="/opt/medication-reminder/your-service-account-key.json"; /usr/local/bin/npx ts-node /opt/medication-reminder/server_reminder_script_example.ts >> /var/log/medication-reminder/cron.log 2>&1
         ```
-    -   **Example using compiled JavaScript file (runs every 5 minutes):**
+    -   **コンパイル済みのJavaScriptファイルを使用する例 (5分ごとに実行):**
         ```cron
         */5 * * * * export GOOGLE_APPLICATION_CREDENTIALS="/opt/medication-reminder/your-service-account-key.json"; /usr/bin/node /opt/medication-reminder/server_reminder_script_example.js >> /var/log/medication-reminder/cron.log 2>&1
         ```
 
-    **Important Cron Notes:**
-    -   **Full Paths:** Always use full paths for executables (`npx`, `ts-node`, `node`) and the script file itself in cron jobs, as the cron environment often has a minimal `PATH`. You can find full paths using `which npx`, `which ts-node`, `which node`.
-    -   **Environment Variable:** Ensure `GOOGLE_APPLICATION_CREDENTIALS` is correctly set within the cron job's execution line (as shown in the examples) or that the cron user's environment has it pre-configured.
-    -   **Logging:** Redirect standard output (`>>`) and standard error (`2>&1`) to a log file (e.g., `/var/log/medication-reminder/cron.log`) for troubleshooting. Ensure the log directory exists and is writable by the cron user.
-    -   **Server Timezone:** The example script `server_reminder_script_example.ts` assumes the server it runs on is configured to JST (Japan Standard Time) because it uses `new Date()` to determine the current time for comparison with reminder times. If your server is in a different timezone, you'll need to adjust the script's date/time handling logic or ensure the server's system timezone is JST.
+    **Cron設定の重要な注意点:**
+    -   **フルパス:** cronジョブでは、実行可能ファイル (`npx`, `ts-node`, `node`) およびスクリプトファイル自体へのフルパスを常に使用してください。cron環境はしばしば最小限の `PATH` しか持たないためです。フルパスは `which npx`、`which ts-node`、`which node` を使って見つけることができます。
+    -   **環境変数:** cronジョブの実行行内で `GOOGLE_APPLICATION_CREDENTIALS` が正しく設定されていること (例に示した通り)、またはcronユーザーの環境に事前に設定されていることを確認してください。
+    -   **ロギング:** 標準出力 (`>>`) と標準エラー (`2>&1`) をログファイル (例: `/var/log/medication-reminder/cron.log`) にリダイレクトして、トラブルシューティングに役立ててください。ログディレクトリが存在し、cronユーザーが書き込み可能であることを確認してください。
+    -   **サーバータイムゾーン:** サンプルスクリプト `server_reminder_script_example.ts` は、リマインダー時間との比較のために現在時刻を決定するのに `new Date()` を使用するため、それが実行されるサーバーがJST (日本標準時) に設定されていることを前提としています。サーバーが異なるタイムゾーンにある場合は、スクリプトの日時処理ロジックを調整するか、サーバーのシステムタイムゾーンがJSTであることを確認する必要があります。
 
-### Functionality
--   The script queries Firestore for `userSettings` (where `notificationsEnabled` is true).
--   For each user, it checks their `reminderTimes` against the current server time (assumed to be JST).
--   If a reminder time matches, it fetches the user's FCM token from `userTokens` and sends a push notification via FCM.
--   The default notification is titled "服薬リマインダー" with the body "お薬を飲む時間です".
+### 機能概要
+-   スクリプトはFirestoreの `userSettings` (`notificationsEnabled` がtrueのもの) をクエリします。
+-   ユーザーごとに、`reminderTimes` を現在のサーバー時刻 (JSTと想定) と比較します。
+-   リマインダー時刻が一致する場合、`userTokens` からユーザーのFCMトークンを取得し、FCM経由でプッシュ通知を送信します。
+-   デフォルトの通知は、タイトルが「服薬リマインダー」、本文が「お薬を飲む時間です」となります。
 
-## 4. Troubleshooting & Notes
+## 4. トラブルシューティングと注意点
 
--   **Push Notification Issues:**
-    -   Check the browser console on the Next.js app for errors related to service worker registration or FCM token retrieval.
-    -   Ensure `NEXT_PUBLIC_FIREBASE_VAPID_KEY` is correctly set in `.env.local`.
-    -   Verify that the `firebase-messaging-sw.js` in the `public` directory is correctly configured and accessible.
-    -   Use the Firebase console (Cloud Messaging section) to send test messages to specific FCM tokens to isolate issues.
-    -   Check logs from the `server_reminder_script_example.ts` (if using cron, check the specified log file).
--   **Server-Side Script:** Remember this script is a separate entity from your Next.js application deployment. It needs its own server environment, dependencies, and process management (cron).
--   **Security:** Always protect your Firebase service account key. Do not commit it to your repository. Use environment variables or secure file storage mechanisms.
+-   **プッシュ通知の問題:**
+    -   Next.jsアプリのブラウザコンソールで、サービスワーカーの登録やFCMトークン取得に関連するエラーを確認してください。
+    -   `.env.local` で `NEXT_PUBLIC_FIREBASE_VAPID_KEY` が正しく設定されていることを確認してください。
+    -   `public` ディレクトリ内の `firebase-messaging-sw.js` が正しく設定され、アクセス可能であることを確認してください。
+    -   Firebaseコンソール (Cloud Messagingセクション) を使用して、特定のFCMトークンにテストメッセージを送信し、問題を切り分けてください。
+    -   `server_reminder_script_example.ts` からのログを確認してください (cronを使用している場合は、指定されたログファイルを確認)。
+-   **サーバーサイドスクリプト:** このスクリプトはNext.jsアプリケーションのデプロイとは別のエンティティであることを忘れないでください。独自のサーバー環境、依存関係、およびプロセス管理 (cron) が必要です。
+-   **セキュリティ:** Firebaseサービスアカウントキーは常に保護してください。リポジトリにコミットしないでください。環境変数または安全なファイルストレージメカニズムを使用してください。
 
-This README provides a basic guide. Depending on your specific deployment environment and needs, further configurations might be necessary.
+このREADMEは基本的なガイドを提供します。特定のデプロイ環境やニーズによっては、さらなる設定が必要になる場合があります。
