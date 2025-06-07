@@ -560,7 +560,7 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold tracking-tight">設定</h1>
 
         <Tabs defaultValue="reminders" value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 flex-wrap">
             <TabsTrigger value="reminders">リマインダー設定</TabsTrigger>
             <TabsTrigger value="notifications">通知設定</TabsTrigger>
             <TabsTrigger value="account">アカウント設定</TabsTrigger>
@@ -728,7 +728,7 @@ export default function SettingsPage() {
                       {linkedAccounts.length > 0 ? (
                           <ul className="space-y-2">
                             {linkedAccounts.map((account) => (
-                                <li key={account.uid} className="flex justify-between items-center">
+                                <li key={account.uid} className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:justify-between sm:items-center">
                                   <span>{account.displayName}</span>
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
@@ -767,7 +767,7 @@ export default function SettingsPage() {
                       アカウント連携コード
                     </label>
                     <form onSubmit={handleLinkCodeSubmit} className="space-y-2">
-                      <div className="flex space-x-2">
+                      <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
                         <Input
                             placeholder="連携コードを入力"
                             value={inputLinkCode}
@@ -787,7 +787,7 @@ export default function SettingsPage() {
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                       自分の連携コード
                     </label>
-                    <div className="flex space-x-2">
+                    <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
                       <Input value={linkCode} readOnly />
                       <Button variant="outline" onClick={copyLinkCode}>
                         <Copy className="h-4 w-4 mr-2" />
