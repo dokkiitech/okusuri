@@ -27,8 +27,10 @@ jobs:
           node-version: "20"
           cache: pnpm
 
-      - name: Install pnpm
-        run: npm install -g pnpm
+      - name: Install pnpm and add to PATH manually
+        run: |
+          npm install -g pnpm
+          echo "$(npm bin -g)" >> $GITHUB_PATH
 
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -83,8 +85,8 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no root@your.debian.server.ip << 'EOF'
             cd /root/okusuri
-            git pull origin main
             npm install -g pnpm
+            export PATH=\$PATH:\$(npm bin -g)
             pnpm install
             pnpm build
             pm2 restart okusurikanri
