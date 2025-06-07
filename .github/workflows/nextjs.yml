@@ -28,7 +28,7 @@ jobs:
           cache: pnpm
 
       - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@8.15.4 --activate
+        run: npm install -g pnpm
 
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -81,11 +81,11 @@ jobs:
 
       - name: SSH into server and deploy
         run: |
-          ssh -o StrictHostKeyChecking=no user@your.debian.server.ip << 'EOF'
-            cd /var/www/your_project
+          ssh -o StrictHostKeyChecking=no root@your.debian.server.ip << 'EOF'
+            cd /root/okusuri
             git pull origin main
-            corepack enable && corepack prepare pnpm@8.15.4 --activate
+            npm install -g pnpm
             pnpm install
             pnpm build
-            pm2 restart next-app
+            pm2 restart okusurikanri
           EOF
