@@ -148,9 +148,14 @@ export default function DashboardPage() {
         setTodayRecords(todayRecordsData)
 
         // 進捗状況を計算
-        if (todayRecordsData.length > 0) {
-          const takenCount = todayRecordsData.filter((record) => record.status === "taken").length
-          setProgress(Math.round((takenCount / todayRecordsData.length) * 100))
+        const totalScheduledDosesToday = validatedMedications.reduce(
+          (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
+          0,
+        )
+        const takenDosesToday = todayRecordsData.filter((record) => record.status === "taken").length
+
+        if (totalScheduledDosesToday > 0) {
+          setProgress(Math.round((takenDosesToday / totalScheduledDosesToday) * 100))
         } else {
           setProgress(0)
         }
@@ -240,8 +245,18 @@ export default function DashboardPage() {
       setTodayRecords([newRecord, ...todayRecords])
 
       // 進捗状況を更新
-      const takenCount = todayRecords.filter((record) => record.status === "taken").length + 1
-      setProgress(Math.round((takenCount / (todayRecords.length + 1)) * 100))
+      const totalScheduledDoses = medications.reduce(
+        (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
+        0,
+      )
+      const updatedTodayRecords = [newRecord, ...todayRecords]
+      const takenDoses = updatedTodayRecords.filter((record) => record.status === "taken").length
+
+      if (totalScheduledDoses > 0) {
+        setProgress(Math.round((takenDoses / totalScheduledDoses) * 100))
+      } else {
+        setProgress(0)
+      }
 
       toast({
         title: "服薬を記録しました",
