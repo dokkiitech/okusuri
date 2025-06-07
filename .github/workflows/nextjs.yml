@@ -36,7 +36,7 @@ jobs:
 
       - name: SSH into server and deploy
         run: |
-          ssh -o StrictHostKeyChecking=no root@your.debian.server.ip << 'EOF'
+          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} << 'EOF'
             cd /root/okusuri
             pnpm install
             pnpm build
