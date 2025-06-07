@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { generateLinkCode } from "@/lib/utils"
 import { Copy, Unlink } from "lucide-react"
+import { enablePushNotifications } from "@/lib/push-notification";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -471,30 +472,67 @@ export default function SettingsPage() {
   }
 
   const handleNotificationToggle = async (enabled: boolean) => {
-    setNotificationsEnabled(enabled)
+    setNotificationsEnabled(enabled); // Keep local state update for immediate UI feedback
 
-    // ユーザー設定に通知設定を保存
-    if (user) {
+    if (user) { // Ensure user object is available
       try {
-        if (!db) {
-          console.error("Firestore is not initialized")
-          return
+        if (!db) { // Ensure db is available
+          console.error("Firestore is not initialized");
+          toast({ title: "エラー", description: "データベースに接続できません。", variant: "destructive" });
+          setNotificationsEnabled(!enabled); // Revert UI on error
+          return;
         }
+        // Save the preference to Firestore first
         await updateDoc(doc(db, "userSettings", user.uid), {
           notificationsEnabled: enabled,
           updatedAt: new Date(),
-        })
-        console.log("通知設定を保存しました")
-      } catch (error) {
-        console.error("通知設定の保存に失敗しました:", error)
-      }
-    }
+        });
+        console.log("通知設定をFirestoreに保存しました:", enabled);
 
-    toast({
-      title: "通知設定を更新しました",
-      description: enabled ? "通知が有効になりました" : "通知が無効になりました",
-    })
-  }
+        if (enabled) {
+          // If notifications are being enabled, attempt to set up push notifications
+          console.log("プッシュ通知の有効化を試みます...");
+          const pushEnabled = await enablePushNotifications(user.uid); // Call the imported function
+          if (pushEnabled) {
+            toast({
+              title: "通知が有効になりました",
+              description: "ブラウザ通知とプッシュ通知の準備ができました。",
+            });
+          } else {
+            // This else block might be hit if user denies permission, or if getToken fails for other reasons.
+            // enablePushNotifications itself logs more specific errors.
+            toast({
+              title: "プッシュ通知設定失敗",
+              description: "通知は許可設定になりましたが、プッシュ通知用の登録に一部失敗しました。ブラウザの通知設定を確認するか、後でもう一度お試しください。",
+              variant: "destructive",
+            });
+            // Optional: Revert setNotificationsEnabled(true) if pushEnabled is false and push is mandatory for this toggle.
+            // For now, we keep notificationsEnabled as true in Firestore, as the user *intended* to enable them.
+          }
+        } else {
+          // If notifications are being disabled
+          toast({
+            title: "通知が無効になりました",
+            description: "ブラウザ通知が無効に設定されました。",
+          });
+          // Consider if FCM token should be deleted from Firestore here for a full "disable".
+          // For this task, just updating the flag is sufficient.
+        }
+      } catch (error) {
+        console.error("通知設定の処理中にエラーが発生しました:", error);
+        toast({
+          title: "エラー",
+          description: "通知設定の更新に失敗しました。",
+          variant: "destructive",
+        });
+        setNotificationsEnabled(!enabled); // Revert UI on error
+      }
+    } else {
+      console.warn("User object not available in handleNotificationToggle");
+      toast({ title: "エラー", description: "ユーザー情報が見つかりません。", variant: "destructive" });
+      setNotificationsEnabled(!enabled); // Revert UI
+    }
+  };
 
   const copyLinkCode = () => {
     navigator.clipboard.writeText(linkCode)
