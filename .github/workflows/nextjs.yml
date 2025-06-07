@@ -25,20 +25,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: pnpm
 
-      - name: Install pnpm and add to PATH
+      - name: Install pnpm (safe way)
         run: |
-          npm install -g pnpm
-          echo "$(npm bin -g)" >> $GITHUB_PATH
-
-      - name: Restore pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
+          curl -fsSL https://get.pnpm.io/install.sh | sh -
+          echo "$HOME/.local/share/pnpm" >> $GITHUB_PATH
+          export PATH="$HOME/.local/share/pnpm:$PATH"
+          pnpm --version
 
       - name: Install dependencies
         run: pnpm install
