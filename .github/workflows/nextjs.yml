@@ -1,4 +1,4 @@
-name: Deploy Next.js site to Pages
+name: Deploy Next.js site to Pages & PM2 server
 
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
           cache: pnpm
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: corepack enable && corepack prepare pnpm@8.15.4 --activate
 
       - name: Restore pnpm cache
         uses: actions/cache@v4
@@ -84,6 +84,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no user@your.debian.server.ip << 'EOF'
             cd /var/www/your_project
             git pull origin main
+            corepack enable && corepack prepare pnpm@8.15.4 --activate
             pnpm install
             pnpm build
             pm2 restart next-app
