@@ -148,9 +148,14 @@ export default function DashboardPage() {
         setTodayRecords(todayRecordsData)
 
         // 進捗状況を計算
-        if (todayRecordsData.length > 0) {
-          const takenCount = todayRecordsData.filter((record) => record.status === "taken").length
-          setProgress(Math.round((takenCount / todayRecordsData.length) * 100))
+        const totalScheduledDosesToday = validatedMedications.reduce(
+          (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
+          0,
+        )
+        const takenDosesToday = todayRecordsData.filter((record) => record.status === "taken").length
+
+        if (totalScheduledDosesToday > 0) {
+          setProgress(Math.round((takenDosesToday / totalScheduledDosesToday) * 100))
         } else {
           setProgress(0)
         }
@@ -240,8 +245,18 @@ export default function DashboardPage() {
       setTodayRecords([newRecord, ...todayRecords])
 
       // 進捗状況を更新
-      const takenCount = todayRecords.filter((record) => record.status === "taken").length + 1
-      setProgress(Math.round((takenCount / (todayRecords.length + 1)) * 100))
+      const totalScheduledDoses = medications.reduce(
+        (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
+        0,
+      )
+      const updatedTodayRecords = [newRecord, ...todayRecords]
+      const takenDoses = updatedTodayRecords.filter((record) => record.status === "taken").length
+
+      if (totalScheduledDoses > 0) {
+        setProgress(Math.round((takenDoses / totalScheduledDoses) * 100))
+      } else {
+        setProgress(0)
+      }
 
       toast({
         title: "服薬を記録しました",
@@ -262,6 +277,178 @@ export default function DashboardPage() {
 
   const handleAccountChange = (userId: string) => {
     setSelectedUserId(userId)
+  }
+
+  async function handleBulkMarkAsTaken(sessionName: string) {
+    if (!user || !db || !selectedUserId) {
+      console.error("User, DB, or selectedUserId is not available for bulk update.")
+      return { newlyCreatedRecords: [], updatedMedications: [] }
+    }
+
+    if (isParentalView) {
+      toast({
+        title: "操作不可",
+        description: "ペアレンタルコントロールモードではこの操作を実行できません。",
+        variant: "destructive",
+      })
+      return { newlyCreatedRecords: [], updatedMedications: [] }
+    }
+
+    const medsForSession = medications.filter(
+      (med) => Array.isArray(med.frequency) && med.frequency.includes(sessionName),
+    )
+
+    if (medsForSession.length === 0) {
+      console.log(`No medications scheduled for the session: ${sessionName}`)
+      // Optionally, provide feedback to the user via toast
+      // toast({ title: "情報", description: `"${sessionName}"に予定されている薬はありません。` })
+      return { newlyCreatedRecords: [], updatedMedications: [] }
+    }
+
+    const medsToMarkAsTaken = medsForSession.filter((med) => {
+      const alreadyTaken = todayRecords.some(
+        (record) =>
+          record.medicationId === med.id &&
+          record.scheduledTime === sessionName &&
+          record.status === "taken",
+      )
+      return !alreadyTaken
+    })
+
+    if (medsToMarkAsTaken.length === 0) {
+      console.log(`All medications for session ${sessionName} already marked as taken.`)
+      // Optionally, provide feedback to the user
+      // toast({ title: "情報", description: `"${sessionName}"の薬はすべて服用済みです。` })
+      return { newlyCreatedRecords: [], updatedMedications: [] }
+    }
+
+    const newlyCreatedRecords: MedicationRecord[] = []
+    const updatedMedicationsInfo: Array<{
+      id: string
+      remainingPills: number
+      takenCount: number
+    }> = []
+
+    for (const medicationToMark of medsToMarkAsTaken) {
+      try {
+        const now = new Date()
+        const newRecordData = {
+          userId: selectedUserId,
+          medicationId: medicationToMark.id,
+          medicationName: medicationToMark.name,
+          status: "taken" as "taken" | "skipped" | "pending",
+          scheduledTime: sessionName,
+          takenAt: now,
+          createdAt: now,
+          recordedBy: user.uid,
+        }
+        const recordRef = await addDoc(collection(db, "medicationRecords"), newRecordData)
+
+        // Ensure Timestamps are handled correctly for local state if needed,
+        // but for Firestore, 'now' (Date object) is fine.
+        // For consistency with how newRecord is created in handleTakeMedication:
+        newlyCreatedRecords.push({
+          ...newRecordData,
+          id: recordRef.id,
+          takenAt: { toDate: () => now } as Timestamp, // Match existing structure
+          createdAt: { toDate: () => now } as Timestamp, // Match existing structure
+        })
+
+        const newRemainingPills = Math.max(
+          0,
+          medicationToMark.remainingPills - medicationToMark.dosagePerTime,
+        )
+        const newTakenCount = medicationToMark.takenCount + 1
+
+        await updateDoc(doc(db, "medications", medicationToMark.id), {
+          remainingPills: newRemainingPills,
+          takenCount: newTakenCount,
+          updatedAt: serverTimestamp(),
+        })
+
+        updatedMedicationsInfo.push({
+          id: medicationToMark.id,
+          remainingPills: newRemainingPills,
+          takenCount: newTakenCount,
+        })
+      } catch (error) {
+        console.error(
+          `Failed to mark ${medicationToMark.name} as taken for session ${sessionName}:`,
+          error,
+        )
+        // Continue to the next medication even if one fails
+        // Optionally, add specific error feedback for this medication
+      }
+    }
+
+    // The actual state updates (setTodayRecords, setMedications, setProgress) will be handled
+    // by the calling code, using the returned values.
+    return { newlyCreatedRecords, updatedMedicationsInfo }
+  }
+
+  const onBulkMarkAsTaken = async (sessionName: string) => {
+    const { newlyCreatedRecords, updatedMedicationsInfo } = await handleBulkMarkAsTaken(sessionName)
+
+    if (!newlyCreatedRecords || !updatedMedicationsInfo) {
+      // This case should ideally be handled by toasts within handleBulkMarkAsTaken
+      // e.g. parental view, no user, etc.
+      return
+    }
+
+    if (newlyCreatedRecords.length === 0 && updatedMedicationsInfo.length === 0) {
+        // This can happen if all meds were already taken or no meds for session.
+        // Toasts for these specific cases are (optionally) in handleBulkMarkAsTaken.
+        // If a general "nothing to do" toast is desired here, it could be added.
+        return;
+    }
+
+    let updatedMedicationsState = medications
+    if (updatedMedicationsInfo.length > 0) {
+      updatedMedicationsState = medications.map((med) => {
+        const updateInfo = updatedMedicationsInfo.find((info) => info.id === med.id)
+        if (updateInfo) {
+          return {
+            ...med,
+            remainingPills: updateInfo.remainingPills,
+            takenCount: updateInfo.takenCount,
+          }
+        }
+        return med
+      })
+      setMedications(updatedMedicationsState)
+    }
+
+    let finalTodayRecords = todayRecords
+    if (newlyCreatedRecords.length > 0) {
+      finalTodayRecords = [...newlyCreatedRecords, ...todayRecords].sort((a, b) => {
+        const dateA = a.createdAt ? (a.createdAt as Timestamp).toDate().getTime() : 0
+        const dateB = b.createdAt ? (b.createdAt as Timestamp).toDate().getTime() : 0
+        return dateB - dateA
+      })
+      setTodayRecords(finalTodayRecords)
+    }
+
+    // Recalculate progress
+    const totalScheduledDoses = updatedMedicationsState.reduce(
+      (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
+      0,
+    )
+    const takenDoses = finalTodayRecords.filter((record) => record.status === "taken").length
+
+    if (totalScheduledDoses > 0) {
+      setProgress(Math.round((takenDoses / totalScheduledDoses) * 100))
+    } else {
+      setProgress(0)
+    }
+
+    if (newlyCreatedRecords.length > 0) {
+      toast({
+        title: "一括服用記録完了",
+        description: `${sessionName}の未服用の薬 ${newlyCreatedRecords.length}件をまとめて服用済みとして記録しました。`,
+      })
+    }
+    // Optional: Add a toast if some meds were updated but no new records created (e.g. error state)
+    // or if updatedMedicationsInfo.length > 0 but newlyCreatedRecords.length === 0
   }
 
   if (loading) {
@@ -451,9 +638,35 @@ export default function DashboardPage() {
                   const timingMeds = medications.filter(
                     (med) => Array.isArray(med.frequency) && med.frequency.includes(timing),
                   )
+
+                  let allTakenForThisSession = false
+                  if (timingMeds.length > 0) {
+                    allTakenForThisSession = timingMeds.every((med) =>
+                      todayRecords.some(
+                        (record) =>
+                          record.medicationId === med.id &&
+                          record.scheduledTime === timing &&
+                          record.status === "taken",
+                      ),
+                    )
+                  }
+
                   return timingMeds.length > 0 ? (
                     <div key={timing} className="space-y-2">
-                      <h3 className="font-medium">{timing}</h3>
+                      <div className="flex justify-between items-center">
+                        <h3 className="font-medium">{timing}</h3>
+                        {!isParentalView && timingMeds.length > 0 && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onBulkMarkAsTaken(timing)}
+                            className="ml-2" // Added margin for spacing
+                            disabled={allTakenForThisSession}
+                          >
+                            {allTakenForThisSession ? "すべて服用 (済)" : "すべて服用"}
+                          </Button>
+                        )}
+                      </div>
                       {timingMeds.map((med) => (
                         <div
                           key={med.id}
