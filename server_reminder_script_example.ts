@@ -71,6 +71,7 @@ async function checkAndSendReminders() {
     const notificationPromises: Promise<string | admin.messaging.MessagingDevicesResponse>[] = [];
 
     settingsSnapshot.forEach((userSettingDoc: admin.firestore.QueryDocumentSnapshot) => {
+
       const settings = userSettingDoc.data() as UserSetting;
       const userId = userSettingDoc.id;
 
