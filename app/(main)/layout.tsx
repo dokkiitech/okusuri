@@ -1,10 +1,10 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
+import { motion, AnimatePresence } from "framer-motion"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Calendar, Home, PillIcon, Settings, Menu, MessageSquare } from "lucide-react"
@@ -92,6 +92,27 @@ export default function MainLayout({
     </>
   )
 
+  const pageVariants = {
+    initial: {
+      opacity: 0,
+      x: "-100vw",
+    },
+    in: {
+      opacity: 1,
+      x: 0,
+    },
+    out: {
+      opacity: 0,
+      x: "100vw",
+    },
+  }
+
+  const pageTransition = {
+    type: "tween",
+    ease: "anticipate",
+    duration: 0.5,
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       {/* モバイル用ナビゲーション */}
@@ -109,7 +130,19 @@ export default function MainLayout({
               </div>
             </SheetContent>
           </Sheet>
-          <main className="flex-1 pt-16 px-4 pb-20">{children}</main>
+          <AnimatePresence mode="wait">
+            <motion.main
+              key={pathname}
+              initial="initial"
+              animate="in"
+              exit="out"
+              variants={pageVariants}
+              transition={pageTransition}
+              className="flex-1 pt-16 px-4 pb-20"
+            >
+              {children}
+            </motion.main>
+          </AnimatePresence>
           {/* モバイル用フッターナビゲーション */}
           <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border h-16 flex items-center justify-around px-2 z-30">
             {navItems.map((item) => {
@@ -141,7 +174,19 @@ export default function MainLayout({
               </div>
             </div>
           </div>
-          <main className="md:pl-64 flex-1 p-8">{children}</main>
+          <AnimatePresence mode="wait">
+            <motion.main
+              key={pathname}
+              initial="initial"
+              animate="in"
+              exit="out"
+              variants={pageVariants}
+              transition={pageTransition}
+              className="md:pl-64 flex-1 p-8"
+            >
+              {children}
+            </motion.main>
+          </AnimatePresence>
         </>
       )}
     </div>
