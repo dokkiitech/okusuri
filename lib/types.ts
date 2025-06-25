@@ -5,6 +5,7 @@ export interface UserSettings {
     昼: string
     晩: string
     就寝前: string
+    頓服?: string // 頓服を追加し、時刻設定はオプショナルにする
   }
   linkCode: string
   linkedAccounts: string[]
@@ -18,7 +19,7 @@ export interface Medication {
   userId: string
   name: string
   dosage: string
-  frequency: string[]
+  frequency: string[] // 例: ["朝", "昼", "晩", "就寝前", "頓服"]
   startDate: Date
   endDate?: Date | null
   notes?: string
@@ -33,7 +34,7 @@ export interface MedicationLog {
   userId: string
   medicationId: string
   takenAt: Date
-  scheduled: string // 朝, 昼, 晩, 就寝前
+  scheduled: string // 朝, 昼, 晩, 就寝前, 頓服
   skipped: boolean
   notes?: string
   createdAt: Date

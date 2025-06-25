@@ -35,6 +35,7 @@ const reminderFormSchema = z.object({
   昼: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "時間は HH:MM 形式で入力してください"),
   晩: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "時間は HH:MM 形式で入力してください"),
   就寝前: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "時間は HH:MM 形式で入力してください"),
+  頓服: z.string().regex(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, "時間は HH:MM 形式で入力してください").optional().or(z.literal("")), // 頓服を追加 (オプショナル、空文字許容)
 })
 
 const accountFormSchema = z.object({
@@ -63,6 +64,7 @@ export default function SettingsPage() {
       昼: "12:00",
       晩: "18:00",
       就寝前: "22:00",
+      頓服: "", // 頓服のデフォルト値
     },
   })
 
@@ -94,6 +96,7 @@ export default function SettingsPage() {
             昼: settings.reminderTimes?.昼 || "12:00",
             晩: settings.reminderTimes?.晩 || "18:00",
             就寝前: settings.reminderTimes?.就寝前 || "22:00",
+            頓服: settings.reminderTimes?.頓服 || "", // 頓服を追加
           })
 
           // 連携コードとリンクされたアカウントを設定
@@ -157,6 +160,7 @@ export default function SettingsPage() {
               昼: "12:00",
               晩: "18:00",
               就寝前: "22:00",
+              頓服: "", // 頓服を追加
             },
             linkCode: newLinkCode,
             linkedAccounts: [],
@@ -195,8 +199,12 @@ export default function SettingsPage() {
         setIsSubmitting(false)
         return
       }
+      const reminderData = {
+        ...values,
+        頓服: values.頓服 || undefined, // 空文字の場合は undefined として保存
+      }
       await updateDoc(doc(db, "userSettings", user.uid), {
-        reminderTimes: values,
+        reminderTimes: reminderData,
         updatedAt: new Date(),
       })
 
@@ -613,6 +621,20 @@ export default function SettingsPage() {
                                   <FormControl>
                                     <Input type="time" {...field} />
                                   </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={reminderForm.control}
+                            name="頓服"
+                            render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>頓服の服用時間 (任意)</FormLabel>
+                                  <FormControl>
+                                    <Input type="time" {...field} />
+                                  </FormControl>
+                                  <FormDescription>必要な場合のみ設定してください。</FormDescription>
                                   <FormMessage />
                                 </FormItem>
                             )}
