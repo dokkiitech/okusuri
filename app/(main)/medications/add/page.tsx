@@ -22,6 +22,7 @@ const frequencyItems = [
   { id: "昼", label: "昼" },
   { id: "晩", label: "晩" },
   { id: "就寝前", label: "就寝前" },
+  { id: "頓服", label: "頓服" }, // 頓服を追加
 ]
 
 const medicationFormSchema = z.object({
