@@ -69,7 +69,33 @@ export default function EditMedicationPage() {
   })
 
   useEffect(() => {
-    if (!user || !medicationId || !db) return
+    const checkParentalStatus = async () => {
+      if (!user || !db) {
+        setLoadingParentalCheck(false)
+        return
+      }
+      try {
+        const userSettingsRef = doc(db, "userSettings", user.uid)
+        const userSettingsSnap = await getDoc(userSettingsRef)
+        if (userSettingsSnap.exists()) {
+          const settings = userSettingsSnap.data()
+          if (settings.linkedAccounts && settings.linkedAccounts.length > 0) {
+            setIsParentAccount(true)
+            router.replace("/medications") // 親アカウントの場合はリダイレクト
+            return
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check parental status:", error)
+      } finally {
+        setLoadingParentalCheck(false)
+      }
+    }
+    checkParentalStatus()
+  }, [user, router])
+
+  useEffect(() => {
+    if (!user || !medicationId || !db || loadingParentalCheck || isParentAccount) return
 
     const fetchMedication = async () => {
       setIsLoading(true)
@@ -108,10 +134,10 @@ export default function EditMedicationPage() {
     }
 
     fetchMedication()
-  }, [user, medicationId, form, router, db])
+  }, [user, medicationId, form, router, db, loadingParentalCheck, isParentAccount])
 
   const onSubmit = async (data: MedicationFormValues) => {
-    if (!user || !medicationId || !initialMedicationData) return
+    if (!user || !medicationId || !initialMedicationData || isParentAccount) return
 
     setIsSubmitting(true)
     try {

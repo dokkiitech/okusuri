@@ -14,6 +14,8 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
+  deleteDoc,
+  getDoc,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, Users } from "lucide-react"
@@ -276,6 +278,55 @@ export default function CalendarPage() {
     }
   }
 
+  const handleCancelMedication = async (recordToCancel: MedicationRecord) => {
+    if (!db || !user || isParentalView) return
+
+    try {
+      // 1. 服薬記録を削除
+      await deleteDoc(doc(db, "medicationRecords", recordToCancel.id))
+
+      // 2. 関連するお薬の情報を更新
+      const medicationRef = doc(db, "medications", recordToCancel.medicationId)
+      const medicationSnap = await getDoc(medicationRef)
+
+      if (medicationSnap.exists()) {
+        const medicationData = medicationSnap.data() as Medication
+        const newRemainingPills = medicationData.remainingPills + medicationData.dosagePerTime
+        const newTakenCount = Math.max(0, medicationData.takenCount - 1)
+
+        await updateDoc(medicationRef, {
+          remainingPills: newRemainingPills,
+          takenCount: newTakenCount,
+          updatedAt: serverTimestamp(),
+        })
+
+        // ローカルのmedications状態を更新
+        setMedications((prevMedications) =>
+          prevMedications.map((med) =>
+            med.id === medicationData.id
+              ? { ...med, remainingPills: newRemainingPills, takenCount: newTakenCount }
+              : med,
+          ),
+        )
+      }
+
+      // ローカルのrecords状態から削除
+      setRecords((prevRecords) => prevRecords.filter((rec) => rec.id !== recordToCancel.id))
+
+      toast({
+        title: "服薬記録をキャンセルしました",
+        description: `${recordToCancel.medicationName}の記録が取り消されました`,
+      })
+    } catch (error) {
+      console.error("服薬記録のキャンセルに失敗しました:", error)
+      toast({
+        title: "エラー",
+        description: "服薬記録のキャンセルに失敗しました",
+        variant: "destructive",
+      })
+    }
+  }
+
   const handleAccountChange = (userId: string) => {
     setSelectedUserId(userId)
   }
@@ -393,7 +444,7 @@ export default function CalendarPage() {
                         <div className="font-medium">{record.medicationName}</div>
                         <div className="text-sm text-muted-foreground">{record.scheduledTime}</div>
                       </div>
-                      <div>
+                      <div className="flex items-center gap-2">
                         {record.status === "taken" ? (
                           <div className="flex items-center text-green-600">
                             <CheckCircle2 className="h-5 w-5 mr-1" />
@@ -409,6 +460,16 @@ export default function CalendarPage() {
                             <Clock className="h-5 w-5 mr-1" />
                             <span className="text-sm">未服用</span>
                           </div>
+                        )}
+                        {!isParentalView && record.status === "taken" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCancelMedication(record)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            キャンセル
+                          </Button>
                         )}
                       </div>
                     </div>
