@@ -42,7 +42,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { AccountSwitcher } from "@/components/account-switcher"
 
 interface Medication {
@@ -145,11 +145,7 @@ export default function CalendarPage() {
         setIsParentalView(selectedUserId !== user.uid)
       } catch (error) {
         console.error("データの取得に失敗しました:", error)
-        toast({
-          title: "エラー",
-          description: "カレンダーデータの取得に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("カレンダーデータの取得に失敗しました");
       } finally {
         setLoading(false)
       }
@@ -213,11 +209,7 @@ export default function CalendarPage() {
 
     // ペアレンタルモードでの服薬記録を禁止
     if (isParentalView) {
-      toast({
-        title: "権限エラー",
-        description: "ペアレンタルコントロールモードでは服薬記録を追加できません",
-        variant: "destructive",
-      })
+      showCentralNotification("権限エラー: ペアレンタルコントロールモードでは服薬記録を追加できません");
       return
     }
 
@@ -261,17 +253,10 @@ export default function CalendarPage() {
 
       setRecords([...records, newRecord])
 
-      toast({
-        title: "服薬を記録しました",
-        description: `${medicationToTake.name}を服用しました`,
-      })
+      showCentralNotification(`${medicationToTake.name}を服用しました`);
     } catch (error) {
       console.error("服薬記録の追加に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "服薬記録の追加に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("服薬記録の追加に失敗しました");
     } finally {
       setMedicationToTake(null)
       setSelectedTiming("")
@@ -313,17 +298,10 @@ export default function CalendarPage() {
       // ローカルのrecords状態から削除
       setRecords((prevRecords) => prevRecords.filter((rec) => rec.id !== recordToCancel.id))
 
-      toast({
-        title: "服薬記録をキャンセルしました",
-        description: `${recordToCancel.medicationName}の記録が取り消されました`,
-      })
+      showCentralNotification(`服薬記録をキャンセルしました: ${recordToCancel.medicationName}の記録が取り消されました`);
     } catch (error) {
       console.error("服薬記録のキャンセルに失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "服薬記録のキャンセルに失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("服薬記録のキャンセルに失敗しました");
     }
   }
 

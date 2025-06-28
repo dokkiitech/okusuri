@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Checkbox } from "@/components/ui/checkbox"
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { ArrowLeft } from "lucide-react"
 
 const frequencyItems = [
@@ -114,20 +114,12 @@ export default function EditMedicationPage() {
             notes: data.notes || "",
           })
         } else {
-          toast({
-            title: "エラー",
-            description: "お薬が見つかりませんでした",
-            variant: "destructive",
-          })
+          showCentralNotification("お薬が見つかりませんでした");
           router.push("/medications")
         }
       } catch (error) {
         console.error("お薬データの取得に失敗しました:", error)
-        toast({
-          title: "エラー",
-          description: "お薬データの取得に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("お薬データの取得に失敗しました");
       } finally {
         setIsLoading(false)
       }
@@ -164,19 +156,12 @@ export default function EditMedicationPage() {
         // userId, createdAt, takenCount は変更しない
       })
 
-      toast({
-        title: "お薬を更新しました",
-        description: `${data.name}が正常に更新されました`,
-      })
+      showCentralNotification(`${data.name}が正常に更新されました`);
 
       router.push("/medications")
     } catch (error) {
       console.error("お薬の更新に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "お薬の更新に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("お薬の更新に失敗しました");
     } finally {
       setIsSubmitting(false)
     }

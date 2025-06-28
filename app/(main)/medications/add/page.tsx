@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Checkbox } from "@/components/ui/checkbox"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { ArrowLeft } from "lucide-react"
 import { useEffect } from "react"
 import { doc, getDoc } from "firebase/firestore"
@@ -103,19 +103,12 @@ export default function AddMedicationPage() {
         takenCount: 0, // 服用回数の初期値
       })
 
-      toast({
-        title: "お薬を追加しました",
-        description: `${data.name}が正常に追加されました`,
-      })
+      showCentralNotification(`${data.name}が正常に追加されました`);
 
       router.push("/medications")
     } catch (error) {
       console.error("お薬の追加に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "お薬の追加に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("お薬の追加に失敗しました");
     } finally {
       setIsSubmitting(false)
     }

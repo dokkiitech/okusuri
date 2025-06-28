@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { PlusCircle, Edit, Trash2, PlusSquare, Check, Users } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -114,11 +114,7 @@ export default function MedicationsPage() {
         setIsParentalView(selectedUserId !== user.uid)
       } catch (error) {
         console.error("お薬データの取得に失敗しました:", error)
-        toast({
-          title: "エラー",
-          description: "お薬データの取得に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("お薬データの取得に失敗しました");
       } finally {
         setLoading(false)
       }
@@ -222,16 +218,9 @@ export default function MedicationsPage() {
 
       // 成功メッセージを表示（記録削除の結果に応じて）
       if (recordsDeleted) {
-        toast({
-          title: "削除完了",
-          description: "お薬とその記録が削除されました",
-        })
+        showCentralNotification("削除完了: お薬とその記録が削除されました");
       } else {
-        toast({
-          title: "一部削除完了",
-          description: "お薬は削除されましたが、記録の削除に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("一部削除完了: お薬は削除されましたが、記録の削除に失敗しました");
       }
     } catch (error) {
       console.error("お薬の削除に失敗しました:", error)
@@ -244,11 +233,7 @@ export default function MedicationsPage() {
         })
       }
 
-      toast({
-        title: "エラー",
-        description: "お薬の削除に失敗しました: " + (error instanceof Error ? error.message : String(error)),
-        variant: "destructive",
-      })
+      showCentralNotification(`エラー: お薬の削除に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setMedicationToDelete(null)
       setIsDeleting(false)
@@ -289,17 +274,10 @@ export default function MedicationsPage() {
         ),
       )
 
-      toast({
-        title: "処方日数を追加しました",
-        description: `${medicationToAddDays.name}に${additionalDays}日分が追加されました`,
-      })
+      showCentralNotification(`処方日数を追加しました: ${medicationToAddDays.name}に${additionalDays}日分が追加されました`);
     } catch (error) {
       console.error("処方日数の追加に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "処方日数の追加に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("エラー: 処方日数の追加に失敗しました");
     } finally {
       setMedicationToAddDays(null)
       setAdditionalDays(14) // リセット
@@ -349,17 +327,10 @@ export default function MedicationsPage() {
         ),
       )
 
-      toast({
-        title: "服薬を記録しました",
-        description: `${medicationToTake.name}を服用しました`,
-      })
+      showCentralNotification(`服薬を記録しました: ${medicationToTake.name}を服用しました`);
     } catch (error) {
       console.error("服薬記録の追加に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "服薬記録の追加に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("エラー: 服薬記録の追加に失敗しました");
     } finally {
       setMedicationToTake(null)
       setSelectedTiming("")

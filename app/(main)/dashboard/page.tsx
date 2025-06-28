@@ -33,7 +33,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { AccountSwitcher } from "@/components/account-switcher"
 import { ErrorHandler } from "@/components/error-handler"
 
@@ -209,13 +209,10 @@ export default function DashboardPage() {
       const updatedTodayRecords = [newRecord, ...todayRecords]
       setTodayRecords(updatedTodayRecords)
 
-      toast({
-        title: "服薬を記録しました",
-        description: `${medicationToTake.name}を服用しました`,
-      })
+      showCentralNotification(`${medicationToTake.name}を服用しました`);
     } catch (error) {
       console.error("服薬記録の追加に失敗しました:", error)
-      toast({ title: "エラー", description: "服薬記録の追加に失敗しました", variant: "destructive" })
+      showCentralNotification("服薬記録の追加に失敗しました");
     } finally {
       setMedicationToTake(null)
       setSelectedTiming("")
@@ -298,13 +295,10 @@ export default function DashboardPage() {
       const takenDoses = newTodayRecords.filter((record) => record.status === "taken").length
       setProgress(totalScheduledDoses > 0 ? Math.round((takenDoses / totalScheduledDoses) * 100) : 0)
 
-      toast({
-        title: "服薬をまとめて記録しました",
-        description: `${timing}のすべてのお薬を服用済みとして記録しました`,
-      })
+      showCentralNotification(`${timing}のすべてのお薬を服用済みとして記録しました`);
     } catch (error) {
       console.error("服薬の一括記録に失敗しました:", error)
-      toast({ title: "エラー", description: "服薬の一括記録に失敗しました", variant: "destructive" })
+      showCentralNotification("服薬の一括記録に失敗しました");
     } finally {
       setTimingToBulkRecord(null)
       setLoading(false)

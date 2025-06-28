@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { doc, getDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react"
 import { doc, getDoc } from "firebase/firestore"
 
@@ -159,16 +159,9 @@ export default function DeleteMedicationPage({ params }: { params: { id: string 
 
       // 成功メッセージを表示（記録削除の結果に応じて）
       if (recordsDeleted) {
-        toast({
-          title: "削除完了",
-          description: "お薬とその記録が削除されました",
-        })
+        showCentralNotification("削除完了: お薬とその記録が削除されました");
       } else {
-        toast({
-          title: "一部削除完了",
-          description: "お薬は削除されましたが、記録の削除に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("一部削除完了: お薬は削除されましたが、記録の削除に失敗しました");
       }
 
       // 一覧ページにリダイレクト
