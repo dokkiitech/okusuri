@@ -14,8 +14,10 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Checkbox } from "@/components/ui/checkbox"
 import { collection, addDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { ArrowLeft } from "lucide-react"
+import { useEffect } from "react"
+import { doc, getDoc } from "firebase/firestore"
 
 const frequencyItems = [
   { id: "朝", label: "朝" },
@@ -39,6 +41,33 @@ export default function AddMedicationPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isParentAccount, setIsParentAccount] = useState(false)
+  const [loadingParentalCheck, setLoadingParentalCheck] = useState(true)
+
+  useEffect(() => {
+    const checkParentalStatus = async () => {
+      if (!user || !db) {
+        setLoadingParentalCheck(false)
+        return
+      }
+      try {
+        const userSettingsRef = doc(db, "userSettings", user.uid)
+        const userSettingsSnap = await getDoc(userSettingsRef)
+        if (userSettingsSnap.exists()) {
+          const settings = userSettingsSnap.data()
+          if (settings.linkedAccounts && settings.linkedAccounts.length > 0) {
+            setIsParentAccount(true)
+            router.replace("/medications") // 親アカウントの場合はリダイレクト
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check parental status:", error)
+      } finally {
+        setLoadingParentalCheck(false)
+      }
+    }
+    checkParentalStatus()
+  }, [user, router])
 
   const form = useForm<MedicationFormValues>({
     resolver: zodResolver(medicationFormSchema),
@@ -52,7 +81,8 @@ export default function AddMedicationPage() {
   })
 
   const onSubmit = async (data: MedicationFormValues) => {
-    if (!user) return
+    if (!user || isParentAccount) return
+
 
     setIsSubmitting(true)
     try {
@@ -73,19 +103,12 @@ export default function AddMedicationPage() {
         takenCount: 0, // 服用回数の初期値
       })
 
-      toast({
-        title: "お薬を追加しました",
-        description: `${data.name}が正常に追加されました`,
-      })
+      showCentralNotification(`${data.name}が正常に追加されました`);
 
       router.push("/medications")
     } catch (error) {
       console.error("お薬の追加に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "お薬の追加に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("お薬の追加に失敗しました");
     } finally {
       setIsSubmitting(false)
     }

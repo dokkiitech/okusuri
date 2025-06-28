@@ -91,8 +91,8 @@ export default function RegisterPage() {
               <Pill className="h-6 w-6 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center">アカウント作成</CardTitle>
-          <CardDescription className="text-center">新しいアカウントを作成して服薬管理を始めましょう</CardDescription>
+          <CardTitle className="text-2xl text-center">新規登録</CardTitle>
+          <CardDescription className="text-center">アカウントを作成して、お薬管理を始めましょう</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Form {...form}>

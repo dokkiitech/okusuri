@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { PlusCircle, Edit, Trash2, PlusSquare, Check, Users } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -114,11 +114,7 @@ export default function MedicationsPage() {
         setIsParentalView(selectedUserId !== user.uid)
       } catch (error) {
         console.error("お薬データの取得に失敗しました:", error)
-        toast({
-          title: "エラー",
-          description: "お薬データの取得に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("お薬データの取得に失敗しました");
       } finally {
         setLoading(false)
       }
@@ -128,14 +124,17 @@ export default function MedicationsPage() {
   }, [user, db, selectedUserId])
 
   const handleAddMedication = () => {
+    if (isParentalView) return
     router.push("/medications/add")
   }
 
   const handleEditMedication = (id: string) => {
+    if (isParentalView) return
     router.push(`/medications/edit/${id}`)
   }
 
   const handleDeleteMedication = async (e) => {
+    if (isParentalView) return
     if (!medicationToDelete || !db || !user) {
       console.log("削除に必要な情報が不足しています", { medicationToDelete, db, user })
       return
@@ -219,16 +218,9 @@ export default function MedicationsPage() {
 
       // 成功メッセージを表示（記録削除の結果に応じて）
       if (recordsDeleted) {
-        toast({
-          title: "削除完了",
-          description: "お薬とその記録が削除されました",
-        })
+        showCentralNotification("削除完了: お薬とその記録が削除されました");
       } else {
-        toast({
-          title: "一部削除完了",
-          description: "お薬は削除されましたが、記録の削除に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("一部削除完了: お薬は削除されましたが、記録の削除に失敗しました");
       }
     } catch (error) {
       console.error("お薬の削除に失敗しました:", error)
@@ -241,11 +233,7 @@ export default function MedicationsPage() {
         })
       }
 
-      toast({
-        title: "エラー",
-        description: "お薬の削除に失敗しました: " + (error instanceof Error ? error.message : String(error)),
-        variant: "destructive",
-      })
+      showCentralNotification(`エラー: お薬の削除に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setMedicationToDelete(null)
       setIsDeleting(false)
@@ -253,6 +241,7 @@ export default function MedicationsPage() {
   }
 
   const handleAddPrescriptionDays = async () => {
+    if (isParentalView) return
     if (!medicationToAddDays || !db || additionalDays <= 0) return
 
     try {
@@ -285,17 +274,10 @@ export default function MedicationsPage() {
         ),
       )
 
-      toast({
-        title: "処方日数を追加しました",
-        description: `${medicationToAddDays.name}に${additionalDays}日分が追加されました`,
-      })
+      showCentralNotification(`処方日数を追加しました: ${medicationToAddDays.name}に${additionalDays}日分が追加されました`);
     } catch (error) {
       console.error("処方日数の追加に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "処方日数の追加に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("エラー: 処方日数の追加に失敗しました");
     } finally {
       setMedicationToAddDays(null)
       setAdditionalDays(14) // リセット
@@ -303,6 +285,7 @@ export default function MedicationsPage() {
   }
 
   const handleTakeMedication = async () => {
+    if (isParentalView) return
     if (!medicationToTake || !selectedTiming || !db || !user) return
 
     try {
@@ -344,17 +327,10 @@ export default function MedicationsPage() {
         ),
       )
 
-      toast({
-        title: "服薬を記録しました",
-        description: `${medicationToTake.name}を服用しました`,
-      })
+      showCentralNotification(`服薬を記録しました: ${medicationToTake.name}を服用しました`);
     } catch (error) {
       console.error("服薬記録の追加に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "服薬記録の追加に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("エラー: 服薬記録の追加に失敗しました");
     } finally {
       setMedicationToTake(null)
       setSelectedTiming("")
@@ -413,7 +389,7 @@ export default function MedicationsPage() {
                   )}
                 </CardTitle>
                 <CardDescription>
-                  {medication.dosagePerTime}錠/回 - {medication.prescriptionDays}日分
+                  {medication.dosagePerTime} 錠/回 - {medication.prescriptionDays} 日分
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -429,7 +405,7 @@ export default function MedicationsPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">残り錠数:</span>
                       <span className={medication.remainingPills < 10 ? "text-red-600 font-bold" : ""}>
-                        {medication.remainingPills}錠
+                        {medication.remainingPills} 錠
                       </span>
                     </div>
                   </div>
@@ -458,48 +434,7 @@ export default function MedicationsPage() {
                       </Button>
                     </>
                   ) : (
-                    <div className="w-full">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => setMedicationToTake(medication)}
-                          >
-                            <Check className="h-4 w-4 mr-2" />
-                            服用を記録
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>服薬記録</DialogTitle>
-                            <DialogDescription>
-                              {medication.name}を服用したタイミングを選択してください。
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-2">
-                              {medication.frequency.map((timing) => (
-                                <Button
-                                  key={timing}
-                                  variant={selectedTiming === timing ? "default" : "outline"}
-                                  onClick={() => setSelectedTiming(timing)}
-                                  className="w-full"
-                                >
-                                  {timing}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                          <DialogFooter>
-                            <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
-                              服用を記録
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
+                    <></>
                   )}
                 </div>
                 {!isParentalView && (
@@ -512,7 +447,7 @@ export default function MedicationsPage() {
                           処方追加
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent key={medication.id + "addDays"}>
                         <DialogHeader>
                           <DialogTitle>処方日数の追加</DialogTitle>
                           <DialogDescription>{medication.name}の処方日数を追加します。</DialogDescription>
@@ -546,7 +481,7 @@ export default function MedicationsPage() {
                           服用
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent key={medication.id + "take-non-parental"}>
                         <DialogHeader>
                           <DialogTitle>服薬記録</DialogTitle>
                           <DialogDescription>

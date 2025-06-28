@@ -16,11 +16,13 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
+  writeBatch,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { PlusCircle, CheckCircle2, XCircle, Clock, Check, Users } from 'lucide-react'
-import { format, startOfDay, endOfDay, isWithinInterval } from "date-fns"
+import { PlusCircle, CheckCircle2, XCircle, Clock, Check, Users, ArrowRight, Pill, CalendarDays, Bell, ChevronRight, ChevronLeft } from 'lucide-react'
+import { format, startOfDay, endOfDay, isWithinInterval, addDays, subDays, isToday } from "date-fns"
 import { ja } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 import {
   Dialog,
   DialogContent,
@@ -30,7 +32,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { toast } from "@/hooks/use-toast"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { AccountSwitcher } from "@/components/account-switcher"
 import { ErrorHandler } from "@/components/error-handler"
 
@@ -68,6 +71,10 @@ export default function DashboardPage() {
   const [progress, setProgress] = useState(0)
   const [medicationToTake, setMedicationToTake] = useState<Medication | null>(null)
   const [selectedTiming, setSelectedTiming] = useState<string>("")
+  const [showBulkRecordDialog, setShowBulkRecordDialog] = useState(false)
+  const [timingToBulkRecord, setTimingToBulkRecord] = useState<string | null>(null)
+  const [openTiming, setOpenTiming] = useState<string | null>(null)
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedUserId, setSelectedUserId] = useState<string>("")
   const [isParentalView, setIsParentalView] = useState(false)
   const [error, setError] = useState<Error | null>(null)
@@ -85,7 +92,6 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // 薬の情報を取得
         const medicationsQuery = query(collection(db, "medications"), where("userId", "==", selectedUserId))
         const medicationsSnapshot = await getDocs(medicationsQuery)
         const medicationsData = medicationsSnapshot.docs.map((doc) => ({
@@ -93,7 +99,6 @@ export default function DashboardPage() {
           ...doc.data(),
         })) as Medication[]
 
-        // データの検証と安全性確保
         const validatedMedications = medicationsData.map((med) => ({
           ...med,
           frequency: Array.isArray(med.frequency) ? med.frequency : [],
@@ -102,10 +107,7 @@ export default function DashboardPage() {
           totalPills: typeof med.totalPills === "number" ? med.totalPills : 0,
           remainingPills: typeof med.remainingPills === "number" ? med.remainingPills : 0,
           takenCount: typeof med.takenCount === "number" ? med.takenCount : 0,
-        }))
-
-        // 作成日でソート（降順）
-        validatedMedications.sort((a, b) => {
+        })).sort((a, b) => {
           const dateA = a.createdAt ? a.createdAt.toDate().getTime() : 0
           const dateB = b.createdAt ? b.createdAt.toDate().getTime() : 0
           return dateB - dateA
@@ -113,21 +115,16 @@ export default function DashboardPage() {
 
         setMedications(validatedMedications)
 
-        // 今日の服薬記録を取得
-        const today = new Date()
-        const startOfToday = startOfDay(today)
-        const endOfToday = endOfDay(today)
+        const startOfCurrentDate = startOfDay(currentDate)
+        const endOfCurrentDate = endOfDay(currentDate)
 
-        // 選択されたユーザーIDで服薬記録を取得
         const recordsQuery = query(collection(db, "medicationRecords"), where("userId", "==", selectedUserId))
-
         const recordsSnapshot = await getDocs(recordsQuery)
         const allRecords = recordsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as MedicationRecord[]
 
-        // クライアント側で今日のレコードをフィルタリングとソート
         const todayRecordsData = allRecords
           .filter((record) => {
             if (!record.createdAt) return false
@@ -135,8 +132,8 @@ export default function DashboardPage() {
               record.createdAt instanceof Timestamp ? record.createdAt.toDate() : new Date(record.createdAt)
 
             return isWithinInterval(recordDate, {
-              start: startOfToday,
-              end: endOfToday,
+              start: startOfCurrentDate,
+              end: endOfCurrentDate,
             })
           })
           .sort((a, b) => {
@@ -147,20 +144,13 @@ export default function DashboardPage() {
 
         setTodayRecords(todayRecordsData)
 
-        // 進捗状況を計算
         const totalScheduledDosesToday = validatedMedications.reduce(
-          (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
+          (sum, med) => sum + med.frequency.length,
           0,
         )
         const takenDosesToday = todayRecordsData.filter((record) => record.status === "taken").length
 
-        if (totalScheduledDosesToday > 0) {
-          setProgress(Math.round((takenDosesToday / totalScheduledDosesToday) * 100))
-        } else {
-          setProgress(0)
-        }
-
-        // ペアレンタルビューかどうかを設定
+        setProgress(totalScheduledDosesToday > 0 ? Math.round((takenDosesToday / totalScheduledDosesToday) * 100) : 0)
         setIsParentalView(selectedUserId !== user.uid)
       } catch (error) {
         console.error("データの取得に失敗しました:", error)
@@ -171,30 +161,13 @@ export default function DashboardPage() {
     }
 
     fetchData()
-  }, [user, db, selectedUserId])
-
-  const handleAddMedication = () => {
-    router.push("/medications/add")
-  }
+  }, [user, db, selectedUserId, currentDate])
 
   const handleTakeMedication = async () => {
-    if (!medicationToTake || !selectedTiming || !db || !user) return
-
-    // ペアレンタルモードでの服薬記録を禁止
-    if (isParentalView) {
-      toast({
-        title: "権限エラー",
-        description: "ペアレンタルコントロールモードでは服薬記録を追加できません",
-        variant: "destructive",
-      })
-      return
-    }
+    if (!medicationToTake || !selectedTiming || !db || !user || isParentalView) return
 
     try {
-      const now = new Date()
-      const formattedTime = format(now, "HH:mm", { locale: ja })
-
-      // 服薬記録を追加
+      const now = currentDate
       const recordRef = await addDoc(collection(db, "medicationRecords"), {
         userId: selectedUserId,
         medicationId: medicationToTake.id,
@@ -203,10 +176,9 @@ export default function DashboardPage() {
         scheduledTime: selectedTiming,
         takenAt: now,
         createdAt: now,
-        recordedBy: user.uid, // 誰が記録したかを保存
+        recordedBy: user.uid,
       })
 
-      // 残数と服用回数を更新
       const newTakenCount = medicationToTake.takenCount + 1
       const newRemainingPills = Math.max(0, medicationToTake.remainingPills - medicationToTake.dosagePerTime)
 
@@ -216,20 +188,13 @@ export default function DashboardPage() {
         updatedAt: serverTimestamp(),
       })
 
-      // ローカルの状態を更新
-      setMedications(
-        medications.map((med) =>
-          med.id === medicationToTake.id
-            ? {
-                ...med,
-                remainingPills: newRemainingPills,
-                takenCount: newTakenCount,
-              }
-            : med,
-        ),
+      const updatedMedications = medications.map((med) =>
+        med.id === medicationToTake.id
+          ? { ...med, remainingPills: newRemainingPills, takenCount: newTakenCount }
+          : med
       )
+      setMedications(updatedMedications)
 
-      // 今日の記録に追加
       const newRecord = {
         id: recordRef.id,
         userId: selectedUserId,
@@ -239,480 +204,378 @@ export default function DashboardPage() {
         scheduledTime: selectedTiming,
         takenAt: { toDate: () => now } as Timestamp,
         createdAt: { toDate: () => now } as Timestamp,
-        recordedBy: user.uid,
-      }
+      } as MedicationRecord
 
-      setTodayRecords([newRecord, ...todayRecords])
-
-      // 進捗状況を更新
-      const totalScheduledDoses = medications.reduce(
-        (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
-        0,
-      )
       const updatedTodayRecords = [newRecord, ...todayRecords]
-      const takenDoses = updatedTodayRecords.filter((record) => record.status === "taken").length
+      setTodayRecords(updatedTodayRecords)
 
-      if (totalScheduledDoses > 0) {
-        setProgress(Math.round((takenDoses / totalScheduledDoses) * 100))
-      } else {
-        setProgress(0)
-      }
-
-      toast({
-        title: "服薬を記録しました",
-        description: `${medicationToTake.name}を服用しました`,
-      })
+      showCentralNotification(`${medicationToTake.name}を服用しました`);
     } catch (error) {
       console.error("服薬記録の追加に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "服薬記録の追加に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("服薬記録の追加に失敗しました");
     } finally {
       setMedicationToTake(null)
       setSelectedTiming("")
     }
   }
 
-  const handleAccountChange = (userId: string) => {
-    setSelectedUserId(userId)
-  }
+  const handleTakeAllMedicationsForTiming = async (timing: string) => {
+    if (!db || !user || isParentalView) return
 
-  async function handleBulkMarkAsTaken(sessionName: string) {
-    if (!user || !db || !selectedUserId) {
-      console.error("User, DB, or selectedUserId is not available for bulk update.")
-      return { newlyCreatedRecords: [], updatedMedications: [] }
-    }
+    setLoading(true)
+    try {
+      const now = currentDate
+      const batch = writeBatch(db)
+      const newTodayRecords: MedicationRecord[] = [...todayRecords]
+      const updatedMedications = [...medications]
 
-    if (isParentalView) {
-      toast({
-        title: "操作不可",
-        description: "ペアレンタルコントロールモードではこの操作を実行できません。",
-        variant: "destructive",
-      })
-      return { newlyCreatedRecords: [], updatedMedications: [] }
-    }
-
-    const medsForSession = medications.filter(
-      (med) => Array.isArray(med.frequency) && med.frequency.includes(sessionName),
-    )
-
-    if (medsForSession.length === 0) {
-      console.log(`No medications scheduled for the session: ${sessionName}`)
-      // Optionally, provide feedback to the user via toast
-      // toast({ title: "情報", description: `"${sessionName}"に予定されている薬はありません。` })
-      return { newlyCreatedRecords: [], updatedMedications: [] }
-    }
-
-    const medsToMarkAsTaken = medsForSession.filter((med) => {
-      const alreadyTaken = todayRecords.some(
-        (record) =>
-          record.medicationId === med.id &&
-          record.scheduledTime === sessionName &&
-          record.status === "taken",
-      )
-      return !alreadyTaken
-    })
-
-    if (medsToMarkAsTaken.length === 0) {
-      console.log(`All medications for session ${sessionName} already marked as taken.`)
-      // Optionally, provide feedback to the user
-      // toast({ title: "情報", description: `"${sessionName}"の薬はすべて服用済みです。` })
-      return { newlyCreatedRecords: [], updatedMedications: [] }
-    }
-
-    const newlyCreatedRecords: MedicationRecord[] = []
-    const updatedMedicationsInfo: Array<{
-      id: string
-      remainingPills: number
-      takenCount: number
-    }> = []
-
-    for (const medicationToMark of medsToMarkAsTaken) {
-      try {
-        const now = new Date()
-        const newRecordData = {
-          userId: selectedUserId,
-          medicationId: medicationToMark.id,
-          medicationName: medicationToMark.name,
-          status: "taken" as "taken" | "skipped" | "pending",
-          scheduledTime: sessionName,
-          takenAt: now,
-          createdAt: now,
-          recordedBy: user.uid,
-        }
-        const recordRef = await addDoc(collection(db, "medicationRecords"), newRecordData)
-
-        // Ensure Timestamps are handled correctly for local state if needed,
-        // but for Firestore, 'now' (Date object) is fine.
-        // For consistency with how newRecord is created in handleTakeMedication:
-        newlyCreatedRecords.push({
-          ...newRecordData,
-          id: recordRef.id,
-          takenAt: { toDate: () => now } as Timestamp, // Match existing structure
-          createdAt: { toDate: () => now } as Timestamp, // Match existing structure
-        })
-
-        const newRemainingPills = Math.max(
-          0,
-          medicationToMark.remainingPills - medicationToMark.dosagePerTime,
+      for (const med of medications) {
+        // Check if the medication is scheduled for this timing and hasn't been taken yet today
+        const alreadyTaken = todayRecords.some(
+          (r) => r.medicationId === med.id && r.scheduledTime === timing && r.status === "taken"
         )
-        const newTakenCount = medicationToMark.takenCount + 1
 
-        await updateDoc(doc(db, "medications", medicationToMark.id), {
-          remainingPills: newRemainingPills,
-          takenCount: newTakenCount,
-          updatedAt: serverTimestamp(),
-        })
+        if (med.frequency.includes(timing) && !alreadyTaken) {
+          // Add record to batch
+          const recordRef = doc(collection(db, "medicationRecords"))
+          batch.set(recordRef, {
+            userId: selectedUserId,
+            medicationId: med.id,
+            medicationName: med.name,
+            status: "taken",
+            scheduledTime: timing,
+            takenAt: now,
+            createdAt: now,
+            recordedBy: user.uid,
+          })
 
-        updatedMedicationsInfo.push({
-          id: medicationToMark.id,
-          remainingPills: newRemainingPills,
-          takenCount: newTakenCount,
-        })
-      } catch (error) {
-        console.error(
-          `Failed to mark ${medicationToMark.name} as taken for session ${sessionName}:`,
-          error,
-        )
-        // Continue to the next medication even if one fails
-        // Optionally, add specific error feedback for this medication
-      }
-    }
+          // Update medication remaining pills and taken count
+          const newRemainingPills = Math.max(0, med.remainingPills - med.dosagePerTime)
+          const newTakenCount = med.takenCount + 1
+          const medRef = doc(db, "medications", med.id)
+          batch.update(medRef, {
+            remainingPills: newRemainingPills,
+            takenCount: newTakenCount,
+            updatedAt: serverTimestamp(),
+          })
 
-    // The actual state updates (setTodayRecords, setMedications, setProgress) will be handled
-    // by the calling code, using the returned values.
-    return { newlyCreatedRecords, updatedMedicationsInfo }
-  }
+          // Update local state for todayRecords
+          newTodayRecords.push({
+            id: recordRef.id,
+            userId: selectedUserId,
+            medicationId: med.id,
+            medicationName: med.name,
+            status: "taken",
+            scheduledTime: timing,
+            takenAt: { toDate: () => now } as Timestamp,
+            createdAt: { toDate: () => now } as Timestamp,
+          } as MedicationRecord)
 
-  const onBulkMarkAsTaken = async (sessionName: string) => {
-    const { newlyCreatedRecords, updatedMedicationsInfo } = await handleBulkMarkAsTaken(sessionName)
-
-    if (!newlyCreatedRecords || !updatedMedicationsInfo) {
-      // This case should ideally be handled by toasts within handleBulkMarkAsTaken
-      // e.g. parental view, no user, etc.
-      return
-    }
-
-    if (newlyCreatedRecords.length === 0 && updatedMedicationsInfo.length === 0) {
-        // This can happen if all meds were already taken or no meds for session.
-        // Toasts for these specific cases are (optionally) in handleBulkMarkAsTaken.
-        // If a general "nothing to do" toast is desired here, it could be added.
-        return;
-    }
-
-    let updatedMedicationsState = medications
-    if (updatedMedicationsInfo.length > 0) {
-      updatedMedicationsState = medications.map((med) => {
-        const updateInfo = updatedMedicationsInfo.find((info) => info.id === med.id)
-        if (updateInfo) {
-          return {
-            ...med,
-            remainingPills: updateInfo.remainingPills,
-            takenCount: updateInfo.takenCount,
+          // Update local state for medications
+          const medIndex = updatedMedications.findIndex((m) => m.id === med.id)
+          if (medIndex > -1) {
+            updatedMedications[medIndex] = {
+              ...updatedMedications[medIndex],
+              remainingPills: newRemainingPills,
+              takenCount: newTakenCount,
+            }
           }
         }
-        return med
-      })
-      setMedications(updatedMedicationsState)
-    }
+      }
 
-    let finalTodayRecords = todayRecords
-    if (newlyCreatedRecords.length > 0) {
-      finalTodayRecords = [...newlyCreatedRecords, ...todayRecords].sort((a, b) => {
-        const dateA = a.createdAt ? (a.createdAt as Timestamp).toDate().getTime() : 0
-        const dateB = b.createdAt ? (b.createdAt as Timestamp).toDate().getTime() : 0
-        return dateB - dateA
-      })
-      setTodayRecords(finalTodayRecords)
-    }
+      await batch.commit()
 
-    // Recalculate progress
-    const totalScheduledDoses = updatedMedicationsState.reduce(
-      (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
-      0,
-    )
-    const takenDoses = finalTodayRecords.filter((record) => record.status === "taken").length
+      setTodayRecords(newTodayRecords)
+      setMedications(updatedMedications)
 
-    if (totalScheduledDoses > 0) {
-      setProgress(Math.round((takenDoses / totalScheduledDoses) * 100))
-    } else {
-      setProgress(0)
-    }
+      const totalScheduledDoses = updatedMedications.reduce(
+        (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
+        0
+      )
+      const takenDoses = newTodayRecords.filter((record) => record.status === "taken").length
+      setProgress(totalScheduledDoses > 0 ? Math.round((takenDoses / totalScheduledDoses) * 100) : 0)
 
-    if (newlyCreatedRecords.length > 0) {
-      toast({
-        title: "一括服用記録完了",
-        description: `${sessionName}の未服用の薬 ${newlyCreatedRecords.length}件をまとめて服用済みとして記録しました。`,
-      })
+      showCentralNotification(`${timing}のすべてのお薬を服用済みとして記録しました`);
+    } catch (error) {
+      console.error("服薬の一括記録に失敗しました:", error)
+      showCentralNotification("服薬の一括記録に失敗しました");
+    } finally {
+      setTimingToBulkRecord(null)
+      setLoading(false)
     }
-    // Optional: Add a toast if some meds were updated but no new records created (e.g. error state)
-    // or if updatedMedicationsInfo.length > 0 but newlyCreatedRecords.length === 0
+  }
+
+  const previousDay = () => {
+    setCurrentDate(subDays(currentDate, 1))
+  }
+
+  const nextDay = () => {
+    setCurrentDate(addDays(currentDate, 1))
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
       </div>
     )
   }
 
-  const today = new Date()
-  const formattedDate = format(today, "yyyy年MM月dd日 (eee)", { locale: ja })
+  const formattedDate = format(currentDate, "M月d日 (eee)", { locale: ja })
+
+  const upcomingSchedules = ["朝", "昼", "晩", "就寝前"].map(timing => {
+    const meds = medications.filter(med => med.frequency.includes(timing) && !todayRecords.some(r => r.medicationId === med.id && r.scheduledTime === timing && r.status === 'taken'))
+    return { timing, meds, count: meds.length }
+  }).filter(s => s.count > 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <ErrorHandler error={error} resetError={resetError} />
 
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">ダッシュボード</h1>
-        <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">こんにちは、{user?.displayName || 'ユーザー'}さん</h1>
+          <p className="text-muted-foreground">今日も一日、お薬の管理を頑張りましょう！</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <AccountSwitcher currentUserId={selectedUserId} onAccountChange={setSelectedUserId} />
           {!isParentalView && (
-            <Button onClick={handleAddMedication}>
+            <Button onClick={() => router.push('/medications/add')}>
               <PlusCircle className="mr-2 h-4 w-4" />
               お薬を追加
             </Button>
           )}
-          <AccountSwitcher currentUserId={selectedUserId} onAccountChange={handleAccountChange} />
         </div>
       </div>
 
       {isParentalView && (
-        <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+        <Card className="bg-blue-950/30 border-blue-800/50">
           <CardContent className="p-4 flex items-center">
-            <Users className="h-5 w-5 mr-2 text-blue-600 dark:text-blue-400" />
-            <p className="text-blue-700 dark:text-blue-300">
+            <Users className="h-5 w-5 mr-3 text-blue-400" />
+            <p className="text-blue-300">
               ペアレンタルコントロールモード - 連携アカウントの服薬状況を表示しています
             </p>
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{formattedDate}</CardTitle>
-          <CardDescription>今日の服薬状況</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>進捗状況</span>
-                <span>{progress}%</span>
-              </div>
-              <Progress value={progress} className="h-2" />
-            </div>
-
-            {todayRecords.length > 0 ? (
-              <div className="space-y-4">
-                {todayRecords.map((record) => (
-                  <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <div className="font-medium">{record.medicationName || "無名の薬"}</div>
-                      <div className="text-sm text-muted-foreground">{record.scheduledTime || "時間未設定"}</div>
-                    </div>
-                    <div>
-                      {record.status === "taken" ? (
-                        <div className="flex items-center text-green-600">
-                          <CheckCircle2 className="h-5 w-5 mr-1" />
-                          <span className="text-sm">服用済み</span>
-                        </div>
-                      ) : record.status === "skipped" ? (
-                        <div className="flex items-center text-red-600">
-                          <XCircle className="h-5 w-5 mr-1" />
-                          <span className="text-sm">スキップ</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center text-amber-600">
-                          <Clock className="h-5 w-5 mr-1" />
-                          <span className="text-sm">未服用</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">今日の服薬記録はありません</div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>お薬一覧</CardTitle>
-            <CardDescription>登録されているお薬</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {medications.length > 0 ? (
-              <div className="space-y-4">
-                {medications.map((medication) => (
-                  <div key={medication.id} className="flex justify-between items-center p-3 border rounded-lg">
-                    <div>
-                      <div className="font-medium">{medication.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {medication.dosagePerTime}錠/回 - {medication.prescriptionDays}日分
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm">
-                        残り:{" "}
-                        <span className={medication.remainingPills < 10 ? "text-red-600 font-bold" : ""}>
-                          {medication.remainingPills}錠
-                        </span>
-                      </div>
-                      {!isParentalView && (
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setMedicationToTake(medication)}
-                            >
-                              <Check className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>服薬記録</DialogTitle>
-                              <DialogDescription>
-                                {medication.name}を服用したタイミングを選択してください。
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                              <div className="grid grid-cols-2 gap-2">
-                                {medication.frequency.map((timing) => (
-                                  <Button
-                                    key={timing}
-                                    variant={selectedTiming === timing ? "default" : "outline"}
-                                    onClick={() => setSelectedTiming(timing)}
-                                    className="w-full"
-                                  >
-                                    {timing}
-                                  </Button>
-                                ))}
-                              </div>
-                            </div>
-                            <DialogFooter>
-                              <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
-                                服用を記録
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                登録されているお薬はありません
-                {!isParentalView && (
-                  <div className="mt-4">
-                    <Button onClick={handleAddMedication}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      お薬を追加
-                    </Button>
-                  </div>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarDays className="h-6 w-6" />
+              <span>{isToday(currentDate) ? "今日の服薬状況" : `${formattedDate}の服薬状況`}</span>
+              {!isToday(currentDate) && (
+                <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())} className="ml-2">
+                  今日に戻る
+                </Button>
+              )}
+              <div className="flex items-center space-x-2 ml-auto">
+                {!isToday(currentDate) && (
+                  <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>
+                    今日に戻る
+                  </Button>
                 )}
+                <Button variant="outline" size="icon" onClick={previousDay}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={nextDay} disabled={isToday(currentDate)}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
-            )}
+            </CardTitle>
+            <CardDescription>今日の服薬の進捗状況です</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-center gap-6">
+                <div className="relative h-32 w-32">
+                    <svg className="h-full w-full" viewBox="0 0 36 36">
+                        <path
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="hsl(var(--secondary))"
+                            strokeWidth="3"
+                        />
+                        <path
+                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth="3"
+                            strokeDasharray={`${progress}, 100`}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-3xl font-bold">{progress}%</span>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-lg">
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <span>服用済み: {todayRecords.filter(r => r.status === 'taken').length} 件</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-lg">
+                        <Clock className="h-5 w-5 text-amber-500" />
+                        <span>未服用: {medications.reduce((acc, med) => acc + med.frequency.length, 0) - todayRecords.filter(r => r.status === 'taken').length} 件</span>
+                    </div>
+                </div>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>今日の予定</CardTitle>
-            <CardDescription>服薬スケジュール</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-6 w-6" />
+              <span>次の服薬予定</span>
+            </CardTitle>
+             <CardDescription>時間になったら通知が届きます</CardDescription>
           </CardHeader>
           <CardContent>
-            {medications.length > 0 ? (
-              <div className="space-y-4">
-                {["朝", "昼", "晩", "就寝前"].map((timing) => {
-                  // Array.includesを安全に使用するために、frequencyが配列であることを確認
-                  const timingMeds = medications.filter(
-                    (med) => Array.isArray(med.frequency) && med.frequency.includes(timing),
-                  )
-
-                  let allTakenForThisSession = false
-                  if (timingMeds.length > 0) {
-                    allTakenForThisSession = timingMeds.every((med) =>
-                      todayRecords.some(
-                        (record) =>
-                          record.medicationId === med.id &&
-                          record.scheduledTime === timing &&
-                          record.status === "taken",
-                      ),
-                    )
-                  }
-
-                  return timingMeds.length > 0 ? (
-                    <div key={timing} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-medium">{timing}</h3>
-                        {!isParentalView && timingMeds.length > 0 && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onBulkMarkAsTaken(timing)}
-                            className="ml-2" // Added margin for spacing
-                            disabled={allTakenForThisSession}
-                          >
-                            {allTakenForThisSession ? "すべて服用 (済)" : "すべて服用"}
-                          </Button>
-                        )}
+            {upcomingSchedules.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingSchedules.map(({ timing, meds, count }) => (
+                  <Collapsible
+                    key={timing}
+                    open={openTiming === timing}
+                    onOpenChange={() => setOpenTiming(openTiming === timing ? null : timing)}
+                    className="rounded-lg border bg-secondary data-[state=open]:bg-secondary/50"
+                  >
+                    <CollapsibleTrigger className="flex w-full items-center justify-between p-3">
+                      <div className="font-semibold text-lg">{timing}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-muted-foreground">{count} 件のお薬</div>
+                        <ChevronRight className={cn("h-4 w-4 transition-transform", openTiming === timing && "rotate-90")} />
                       </div>
-                      {timingMeds.map((med) => (
-                        <div
-                          key={med.id}
-                          className="flex items-center justify-between p-2 border-l-4 border-primary pl-3 rounded-sm"
-                        >
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-2 p-3 pt-0">
+                      {meds.map((med) => (
+                        <div key={med.id} className="flex items-center justify-between rounded-md border p-3">
                           <div>
-                            {med.name} - {med.dosagePerTime}錠
+                            <div className="font-medium">{med.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              1回{med.dosagePerTime}錠
+                            </div>
                           </div>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setMedicationToTake(med)
-                                  setSelectedTiming(timing)
-                                }}
-                                disabled={isParentalView} // ペアレンタルモードでは無効化
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
+                          {!isParentalView && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setMedicationToTake(med)
+                                    setSelectedTiming(timing)
+                                  }}
+                                >
+                                  服用を記録
+                                </Button>
+                              </DialogTrigger>
+                              {medicationToTake?.id === med.id && selectedTiming === timing && (
+                                <DialogContent key={med.id + timing}>
+                                  <DialogHeader>
+                                    <DialogTitle>服薬記録</DialogTitle>
+                                    <DialogDescription>
+                                      {med.name}を{timing}に服用したことを記録しますか？
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DialogFooter>
+                                    <Button variant="outline" onClick={() => setMedicationToTake(null)}>
+                                      キャンセル
+                                    </Button>
+                                    <Button onClick={handleTakeMedication}>
+                                      記録
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              )}
+                            </Dialog>
+                          )}
+                        </div>
+                      ))}
+                      {!isParentalView && (
+                        <Dialog open={timingToBulkRecord === timing} onOpenChange={(open) => {
+                          if (open) {
+                            setTimingToBulkRecord(timing)
+                          } else {
+                            setTimingToBulkRecord(null)
+                          }
+                        }}>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="w-full mt-2">
+                              一括で記録
+                            </Button>
+                          </DialogTrigger>
+                          {timingToBulkRecord === timing && (
+                            <DialogContent key={timing}>
                               <DialogHeader>
-                                <DialogTitle>服薬記録</DialogTitle>
+                                <DialogTitle>{timing}の服薬をまとめて記録しますか？</DialogTitle>
                                 <DialogDescription>
-                                  {med.name}を{timing}に服用しますか？
+                                  {timing}に服用予定のすべてのお薬（{count}件）を「服用済み」として記録します。
                                 </DialogDescription>
                               </DialogHeader>
                               <DialogFooter>
-                                <Button onClick={handleTakeMedication}>服用を記録</Button>
+                                <Button variant="outline" onClick={() => setTimingToBulkRecord(null)}>
+                                  キャンセル
+                                </Button>
+                                <Button onClick={() => handleTakeAllMedicationsForTiming(timing)}>
+                                  まとめて記録
+                                </Button>
                               </DialogFooter>
                             </DialogContent>
-                          </Dialog>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null
-                })}
+                          )}
+                        </Dialog>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">服薬スケジュールはありません</div>
+              <div className="text-center py-8 text-muted-foreground">今日の服薬予定はすべて完了しました</div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Pill className="h-6 w-6" />
+            <span>お薬一覧</span>
+          </CardTitle>
+          <CardDescription>登録されているお薬のリストです</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {medications.length > 0 ? (
+            <div className="space-y-4">
+              {medications.map((med) => (
+                <div key={med.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-secondary/50 transition-colors">
+                  <div>
+                    <div className="font-bold text-lg">{med.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      1回{med.dosagePerTime}錠 / 残り{med.remainingPills}錠
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => router.push(`/medications/edit/${med.id}`)}>
+                    <ChevronRight className="h-5 w-5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="mb-4">登録されているお薬はありません</p>
+              {!isParentalView && (
+                <Button onClick={() => router.push('/medications/add')}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  お薬を追加する
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   )
 }

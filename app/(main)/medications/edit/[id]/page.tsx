@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Checkbox } from "@/components/ui/checkbox"
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { ArrowLeft } from "lucide-react"
 
 const frequencyItems = [
@@ -69,7 +69,33 @@ export default function EditMedicationPage() {
   })
 
   useEffect(() => {
-    if (!user || !medicationId || !db) return
+    const checkParentalStatus = async () => {
+      if (!user || !db) {
+        setLoadingParentalCheck(false)
+        return
+      }
+      try {
+        const userSettingsRef = doc(db, "userSettings", user.uid)
+        const userSettingsSnap = await getDoc(userSettingsRef)
+        if (userSettingsSnap.exists()) {
+          const settings = userSettingsSnap.data()
+          if (settings.linkedAccounts && settings.linkedAccounts.length > 0) {
+            setIsParentAccount(true)
+            router.replace("/medications") // 親アカウントの場合はリダイレクト
+            return
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check parental status:", error)
+      } finally {
+        setLoadingParentalCheck(false)
+      }
+    }
+    checkParentalStatus()
+  }, [user, router])
+
+  useEffect(() => {
+    if (!user || !medicationId || !db || loadingParentalCheck || isParentAccount) return
 
     const fetchMedication = async () => {
       setIsLoading(true)
@@ -88,30 +114,22 @@ export default function EditMedicationPage() {
             notes: data.notes || "",
           })
         } else {
-          toast({
-            title: "エラー",
-            description: "お薬が見つかりませんでした",
-            variant: "destructive",
-          })
+          showCentralNotification("お薬が見つかりませんでした");
           router.push("/medications")
         }
       } catch (error) {
         console.error("お薬データの取得に失敗しました:", error)
-        toast({
-          title: "エラー",
-          description: "お薬データの取得に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("お薬データの取得に失敗しました");
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchMedication()
-  }, [user, medicationId, form, router, db])
+  }, [user, medicationId, form, router, db, loadingParentalCheck, isParentAccount])
 
   const onSubmit = async (data: MedicationFormValues) => {
-    if (!user || !medicationId || !initialMedicationData) return
+    if (!user || !medicationId || !initialMedicationData || isParentAccount) return
 
     setIsSubmitting(true)
     try {
@@ -138,19 +156,12 @@ export default function EditMedicationPage() {
         // userId, createdAt, takenCount は変更しない
       })
 
-      toast({
-        title: "お薬を更新しました",
-        description: `${data.name}が正常に更新されました`,
-      })
+      showCentralNotification(`${data.name}が正常に更新されました`);
 
       router.push("/medications")
     } catch (error) {
       console.error("お薬の更新に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "お薬の更新に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("お薬の更新に失敗しました");
     } finally {
       setIsSubmitting(false)
     }

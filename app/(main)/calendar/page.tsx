@@ -14,6 +14,8 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
+  deleteDoc,
+  getDoc,
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, Users } from "lucide-react"
@@ -40,7 +42,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { AccountSwitcher } from "@/components/account-switcher"
 
 interface Medication {
@@ -143,11 +145,7 @@ export default function CalendarPage() {
         setIsParentalView(selectedUserId !== user.uid)
       } catch (error) {
         console.error("データの取得に失敗しました:", error)
-        toast({
-          title: "エラー",
-          description: "カレンダーデータの取得に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("カレンダーデータの取得に失敗しました");
       } finally {
         setLoading(false)
       }
@@ -211,11 +209,7 @@ export default function CalendarPage() {
 
     // ペアレンタルモードでの服薬記録を禁止
     if (isParentalView) {
-      toast({
-        title: "権限エラー",
-        description: "ペアレンタルコントロールモードでは服薬記録を追加できません",
-        variant: "destructive",
-      })
+      showCentralNotification("権限エラー: ペアレンタルコントロールモードでは服薬記録を追加できません");
       return
     }
 
@@ -259,20 +253,55 @@ export default function CalendarPage() {
 
       setRecords([...records, newRecord])
 
-      toast({
-        title: "服薬を記録しました",
-        description: `${medicationToTake.name}を服用しました`,
-      })
+      showCentralNotification(`${medicationToTake.name}を服用しました`);
     } catch (error) {
       console.error("服薬記録の追加に失敗しました:", error)
-      toast({
-        title: "エラー",
-        description: "服薬記録の追加に失敗しました",
-        variant: "destructive",
-      })
+      showCentralNotification("服薬記録の追加に失敗しました");
     } finally {
       setMedicationToTake(null)
       setSelectedTiming("")
+    }
+  }
+
+  const handleCancelMedication = async (recordToCancel: MedicationRecord) => {
+    if (!db || !user || isParentalView) return
+
+    try {
+      // 1. 服薬記録を削除
+      await deleteDoc(doc(db, "medicationRecords", recordToCancel.id))
+
+      // 2. 関連するお薬の情報を更新
+      const medicationRef = doc(db, "medications", recordToCancel.medicationId)
+      const medicationSnap = await getDoc(medicationRef)
+
+      if (medicationSnap.exists()) {
+        const medicationData = medicationSnap.data() as Medication
+        const newRemainingPills = medicationData.remainingPills + medicationData.dosagePerTime
+        const newTakenCount = Math.max(0, medicationData.takenCount - 1)
+
+        await updateDoc(medicationRef, {
+          remainingPills: newRemainingPills,
+          takenCount: newTakenCount,
+          updatedAt: serverTimestamp(),
+        })
+
+        // ローカルのmedications状態を更新
+        setMedications((prevMedications) =>
+          prevMedications.map((med) =>
+            med.id === medicationData.id
+              ? { ...med, remainingPills: newRemainingPills, takenCount: newTakenCount }
+              : med,
+          ),
+        )
+      }
+
+      // ローカルのrecords状態から削除
+      setRecords((prevRecords) => prevRecords.filter((rec) => rec.id !== recordToCancel.id))
+
+      showCentralNotification(`服薬記録をキャンセルしました: ${recordToCancel.medicationName}の記録が取り消されました`);
+    } catch (error) {
+      console.error("服薬記録のキャンセルに失敗しました:", error)
+      showCentralNotification("服薬記録のキャンセルに失敗しました");
     }
   }
 
@@ -344,26 +373,31 @@ export default function CalendarPage() {
                     !isSameMonth(day, currentMonth) && "bg-muted/20",
                     isToday(day) && "border-primary border-2",
                     isSelected && "ring-2 ring-primary",
-                    status === "complete" && "bg-green-50 dark:bg-green-950/20",
-                    status === "partial" && "bg-amber-50 dark:bg-amber-950/20",
-                    status === "missed" && "bg-red-50 dark:bg-red-950/20",
+                    status === "complete" && "bg-green-100/30 dark:bg-green-950/30",
+                    status === "partial" && "bg-amber-100/30 dark:bg-amber-950/30",
+                    status === "missed" && "bg-red-100/30 dark:bg-red-950/30",
                   )}
                   onClick={() => handleDayClick(day)}
                 >
-                  <div className="text-right text-sm font-medium">{format(day, "d")}</div>
+                  <div className="text-right text-sm font-bold">{format(day, "d")}</div>
                   <div className="mt-1 space-y-1 overflow-y-auto max-h-[calc(100%-20px)]">
-                    {dayRecords.map((record) => (
-                      <div key={record.id} className="text-xs flex items-center truncate">
+                    {dayRecords.slice(0, 2).map((record) => (
+                      <div key={record.id} className="text-sm flex items-center truncate">
                         {record.status === "taken" ? (
-                          <CheckCircle2 className="h-3 w-3 text-green-600 mr-1 flex-shrink-0" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 mr-1 flex-shrink-0" />
                         ) : record.status === "skipped" ? (
-                          <XCircle className="h-3 w-3 text-red-600 mr-1 flex-shrink-0" />
+                          <XCircle className="h-3.5 w-3.5 text-red-600 mr-1 flex-shrink-0" />
                         ) : (
-                          <Clock className="h-3 w-3 text-amber-600 mr-1 flex-shrink-0" />
+                          <Clock className="h-3.5 w-3.5 text-amber-600 mr-1 flex-shrink-0" />
                         )}
-                        <span className="truncate">{record.medicationName}</span>
+                        <span className="truncate font-medium text-gray-800 dark:text-gray-200">{record.medicationName}</span>
                       </div>
                     ))}
+                    {dayRecords.length > 2 && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        +{dayRecords.length - 2} その他
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -388,7 +422,7 @@ export default function CalendarPage() {
                         <div className="font-medium">{record.medicationName}</div>
                         <div className="text-sm text-muted-foreground">{record.scheduledTime}</div>
                       </div>
-                      <div>
+                      <div className="flex items-center gap-2">
                         {record.status === "taken" ? (
                           <div className="flex items-center text-green-600">
                             <CheckCircle2 className="h-5 w-5 mr-1" />
@@ -404,6 +438,16 @@ export default function CalendarPage() {
                             <Clock className="h-5 w-5 mr-1" />
                             <span className="text-sm">未服用</span>
                           </div>
+                        )}
+                        {!isParentalView && record.status === "taken" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCancelMedication(record)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            キャンセル
+                          </Button>
                         )}
                       </div>
                     </div>
@@ -429,34 +473,36 @@ export default function CalendarPage() {
                             <span className="truncate">{medication.name}</span>
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>服薬記録</DialogTitle>
-                            <DialogDescription>
-                              {medication.name}を{format(selectedDay, "yyyy年MM月dd日", { locale: ja })}
-                              に服用したタイミングを選択してください。
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-2">
-                              {medication.frequency.map((timing) => (
-                                <Button
-                                  key={timing}
-                                  variant={selectedTiming === timing ? "default" : "outline"}
-                                  onClick={() => setSelectedTiming(timing)}
-                                  className="w-full"
-                                >
-                                  {timing}
-                                </Button>
-                              ))}
+                        {medicationToTake?.id === medication.id && (
+                          <DialogContent key={medication.id + "calendar"}>
+                            <DialogHeader>
+                              <DialogTitle>服薬記録</DialogTitle>
+                              <DialogDescription>
+                                {medication.name}を{format(selectedDay, "yyyy年MM月dd日", { locale: ja })}
+                                に服用したタイミングを選択してください。
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid grid-cols-2 gap-2">
+                                {medication.frequency.map((timing) => (
+                                  <Button
+                                    key={timing}
+                                    variant={selectedTiming === timing ? "default" : "outline"}
+                                    onClick={() => setSelectedTiming(timing)}
+                                    className="w-full"
+                                  >
+                                    {timing}
+                                  </Button>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                          <DialogFooter>
-                            <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
-                              服用を記録
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
+                            <DialogFooter>
+                              <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
+                                服用を記録
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        )}
                       </Dialog>
                     ))}
                   </div>

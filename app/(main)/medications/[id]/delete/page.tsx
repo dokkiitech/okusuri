@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from "@/components/ui/button"
 import { doc, getDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { toast } from "@/hooks/use-toast"
+import { showCentralNotification } from "@/lib/notification.tsx"
 import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react"
+import { doc, getDoc } from "firebase/firestore"
 
 export default function DeleteMedicationPage({ params }: { params: { id: string } }) {
   const { user } = useAuth()
@@ -17,9 +18,37 @@ export default function DeleteMedicationPage({ params }: { params: { id: string 
   const [loading, setLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isParentAccount, setIsParentAccount] = useState(false)
+  const [loadingParentalCheck, setLoadingParentalCheck] = useState(true)
 
   useEffect(() => {
-    if (!user || !params.id || !db) return
+    const checkParentalStatus = async () => {
+      if (!user || !db) {
+        setLoadingParentalCheck(false)
+        return
+      }
+      try {
+        const userSettingsRef = doc(db, "userSettings", user.uid)
+        const userSettingsSnap = await getDoc(userSettingsRef)
+        if (userSettingsSnap.exists()) {
+          const settings = userSettingsSnap.data()
+          if (settings.linkedAccounts && settings.linkedAccounts.length > 0) {
+            setIsParentAccount(true)
+            router.replace("/medications") // 親アカウントの場合はリダイレクト
+            return
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check parental status:", error)
+      } finally {
+        setLoadingParentalCheck(false)
+      }
+    }
+    checkParentalStatus()
+  }, [user, router])
+
+  useEffect(() => {
+    if (!user || !params.id || !db || loadingParentalCheck || isParentAccount) return
 
     const fetchMedication = async () => {
       try {
@@ -51,10 +80,10 @@ export default function DeleteMedicationPage({ params }: { params: { id: string 
     }
 
     fetchMedication()
-  }, [user, params.id, db])
+  }, [user, params.id, db, loadingParentalCheck, isParentAccount])
 
   const handleDelete = async () => {
-    if (!medication || !db || !user) return
+    if (!medication || !db || !user || isParentAccount) return
 
     setIsDeleting(true)
     let recordsDeleted = false
@@ -130,16 +159,9 @@ export default function DeleteMedicationPage({ params }: { params: { id: string 
 
       // 成功メッセージを表示（記録削除の結果に応じて）
       if (recordsDeleted) {
-        toast({
-          title: "削除完了",
-          description: "お薬とその記録が削除されました",
-        })
+        showCentralNotification("削除完了: お薬とその記録が削除されました");
       } else {
-        toast({
-          title: "一部削除完了",
-          description: "お薬は削除されましたが、記録の削除に失敗しました",
-          variant: "destructive",
-        })
+        showCentralNotification("一部削除完了: お薬は削除されましたが、記録の削除に失敗しました");
       }
 
       // 一覧ページにリダイレクト
