@@ -344,26 +344,31 @@ export default function CalendarPage() {
                     !isSameMonth(day, currentMonth) && "bg-muted/20",
                     isToday(day) && "border-primary border-2",
                     isSelected && "ring-2 ring-primary",
-                    status === "complete" && "bg-green-50 dark:bg-green-950/20",
-                    status === "partial" && "bg-amber-50 dark:bg-amber-950/20",
-                    status === "missed" && "bg-red-50 dark:bg-red-950/20",
+                    status === "complete" && "bg-green-100/30 dark:bg-green-950/30",
+                    status === "partial" && "bg-amber-100/30 dark:bg-amber-950/30",
+                    status === "missed" && "bg-red-100/30 dark:bg-red-950/30",
                   )}
                   onClick={() => handleDayClick(day)}
                 >
-                  <div className="text-right text-sm font-medium">{format(day, "d")}</div>
+                  <div className="text-right text-sm font-bold">{format(day, "d")}</div>
                   <div className="mt-1 space-y-1 overflow-y-auto max-h-[calc(100%-20px)]">
-                    {dayRecords.map((record) => (
-                      <div key={record.id} className="text-xs flex items-center truncate">
+                    {dayRecords.slice(0, 2).map((record) => (
+                      <div key={record.id} className="text-sm flex items-center truncate">
                         {record.status === "taken" ? (
-                          <CheckCircle2 className="h-3 w-3 text-green-600 mr-1 flex-shrink-0" />
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 mr-1 flex-shrink-0" />
                         ) : record.status === "skipped" ? (
-                          <XCircle className="h-3 w-3 text-red-600 mr-1 flex-shrink-0" />
+                          <XCircle className="h-3.5 w-3.5 text-red-600 mr-1 flex-shrink-0" />
                         ) : (
-                          <Clock className="h-3 w-3 text-amber-600 mr-1 flex-shrink-0" />
+                          <Clock className="h-3.5 w-3.5 text-amber-600 mr-1 flex-shrink-0" />
                         )}
-                        <span className="truncate">{record.medicationName}</span>
+                        <span className="truncate font-medium text-gray-800 dark:text-gray-200">{record.medicationName}</span>
                       </div>
                     ))}
+                    {dayRecords.length > 2 && (
+                      <div className="text-xs text-muted-foreground mt-1">
+                        +{dayRecords.length - 2} その他
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -429,34 +434,36 @@ export default function CalendarPage() {
                             <span className="truncate">{medication.name}</span>
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>服薬記録</DialogTitle>
-                            <DialogDescription>
-                              {medication.name}を{format(selectedDay, "yyyy年MM月dd日", { locale: ja })}
-                              に服用したタイミングを選択してください。
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-2">
-                              {medication.frequency.map((timing) => (
-                                <Button
-                                  key={timing}
-                                  variant={selectedTiming === timing ? "default" : "outline"}
-                                  onClick={() => setSelectedTiming(timing)}
-                                  className="w-full"
-                                >
-                                  {timing}
-                                </Button>
-                              ))}
+                        {medicationToTake?.id === medication.id && (
+                          <DialogContent key={medication.id + "calendar"}>
+                            <DialogHeader>
+                              <DialogTitle>服薬記録</DialogTitle>
+                              <DialogDescription>
+                                {medication.name}を{format(selectedDay, "yyyy年MM月dd日", { locale: ja })}
+                                に服用したタイミングを選択してください。
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                              <div className="grid grid-cols-2 gap-2">
+                                {medication.frequency.map((timing) => (
+                                  <Button
+                                    key={timing}
+                                    variant={selectedTiming === timing ? "default" : "outline"}
+                                    onClick={() => setSelectedTiming(timing)}
+                                    className="w-full"
+                                  >
+                                    {timing}
+                                  </Button>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                          <DialogFooter>
-                            <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
-                              服用を記録
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
+                            <DialogFooter>
+                              <Button onClick={handleTakeMedication} disabled={!selectedTiming}>
+                                服用を記録
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        )}
                       </Dialog>
                     ))}
                   </div>

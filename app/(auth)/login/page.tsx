@@ -90,8 +90,8 @@ export default function LoginPage() {
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">服薬管理アプリ</CardTitle>
-            <CardDescription className="text-center">アカウントにログインして服薬管理を始めましょう</CardDescription>
+            <CardTitle className="text-2xl text-center">ログイン</CardTitle>
+            <CardDescription className="text-center">メールアドレスとパスワードを入力してログインしてください</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {!firebaseInitialized && (

@@ -40,31 +40,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       console.log("Auth state changed:", currentUser ? currentUser.email : "No user")
       if (currentUser) {
-        setUser(currentUser)
-
-        // ユーザー情報をFirestoreに保存/更新
-        try {
-          if (!db) {
-            console.error("Firestore is not initialized")
-            return
-          }
-
-          const userRef = doc(db, "users", currentUser.uid)
-          const userSnap = await getDoc(userRef)
-
-          if (!userSnap.exists()) {
-            // 新規ユーザーの場合、Firestoreにユーザー情報を作成
-            await setDoc(userRef, {
-              uid: currentUser.uid,
-              email: currentUser.email,
-              displayName: currentUser.displayName || "",
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            })
-          }
-        } catch (error) {
-          console.error("ユーザー情報の保存に失敗しました:", error)
+        // Firestoreからユーザーデータを取得して最新のdisplayNameを取得
+        if (!db) {
+          console.error("Firestore is not initialized")
+          setLoading(false)
+          return
         }
+
+        const userRef = doc(db, "users", currentUser.uid)
+        const userSnap = await getDoc(userRef)
+        let updatedUser = currentUser
+
+        if (userSnap.exists()) {
+          const firestoreData = userSnap.data()
+          // FirestoreのdisplayNameがAuthのdisplayNameと異なる場合、Firestoreのものを優先
+          if (firestoreData.displayName && firestoreData.displayName !== currentUser.displayName) {
+            updatedUser = { ...currentUser, displayName: firestoreData.displayName } as User
+          }
+        } else {
+          // 新規ユーザーの場合、Firestoreにユーザー情報を作成
+          await setDoc(userRef, {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName || "",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          })
+        }
+        setUser(updatedUser)
       } else {
         setUser(null)
       }

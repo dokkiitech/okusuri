@@ -413,7 +413,7 @@ export default function MedicationsPage() {
                   )}
                 </CardTitle>
                 <CardDescription>
-                  {medication.dosagePerTime}錠/回 - {medication.prescriptionDays}日分
+                  {medication.dosagePerTime} 錠/回 - {medication.prescriptionDays} 日分
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -429,7 +429,7 @@ export default function MedicationsPage() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">残り錠数:</span>
                       <span className={medication.remainingPills < 10 ? "text-red-600 font-bold" : ""}>
-                        {medication.remainingPills}錠
+                        {medication.remainingPills} 錠
                       </span>
                     </div>
                   </div>
@@ -471,7 +471,7 @@ export default function MedicationsPage() {
                             服用を記録
                           </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent key={medication.id + "take"}>
                           <DialogHeader>
                             <DialogTitle>服薬記録</DialogTitle>
                             <DialogDescription>
@@ -512,7 +512,7 @@ export default function MedicationsPage() {
                           処方追加
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent key={medication.id + "addDays"}>
                         <DialogHeader>
                           <DialogTitle>処方日数の追加</DialogTitle>
                           <DialogDescription>{medication.name}の処方日数を追加します。</DialogDescription>
@@ -546,7 +546,7 @@ export default function MedicationsPage() {
                           服用
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent key={medication.id + "take-non-parental"}>
                         <DialogHeader>
                           <DialogTitle>服薬記録</DialogTitle>
                           <DialogDescription>
