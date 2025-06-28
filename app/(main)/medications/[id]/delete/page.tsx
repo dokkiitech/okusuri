@@ -9,7 +9,7 @@ import { doc, getDoc, deleteDoc, collection, query, where, getDocs, writeBatch }
 import { db } from "@/lib/firebase"
 import { showCentralNotification } from "@/lib/notification.tsx"
 import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react"
-import { doc, getDoc } from "firebase/firestore"
+
 
 export default function DeleteMedicationPage({ params }: { params: { id: string } }) {
   const { user } = useAuth()

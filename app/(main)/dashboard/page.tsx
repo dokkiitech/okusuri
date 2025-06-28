@@ -365,17 +365,9 @@ export default function DashboardPage() {
             <CardTitle className="flex items-center gap-2">
               <CalendarDays className="h-6 w-6" />
               <span>{isToday(currentDate) ? "今日の服薬状況" : `${formattedDate}の服薬状況`}</span>
-              {!isToday(currentDate) && (
-                <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())} className="ml-2">
-                  今日に戻る
-                </Button>
-              )}
+              
               <div className="flex items-center space-x-2 ml-auto">
-                {!isToday(currentDate) && (
-                  <Button variant="outline" size="sm" onClick={() => setCurrentDate(new Date())}>
-                    今日に戻る
-                  </Button>
-                )}
+                
                 <Button variant="outline" size="icon" onClick={previousDay}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
