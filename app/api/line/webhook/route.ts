@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client, validateSignature, WebhookEvent } from "@line/bot-sdk";
 import { handleTextMessage } from "@/lib/line-handler";
+import { initScheduler } from "@/lib/scheduler"; // スケジューラーをインポート
+
+// スケジューラーを初期化
+initScheduler();
 
 const config = {
   channelSecret: process.env.LINE_CHANNEL_SECRET!,
