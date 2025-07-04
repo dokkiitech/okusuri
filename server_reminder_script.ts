@@ -3,7 +3,7 @@ import { Client } from "@line/bot-sdk";
 import { Medication } from "./lib/types";
 
 // --- Configuration ---
-const SERVICE_ACCOUNT_KEY_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./path/to/your/serviceAccountKey.json";
+const SERVICE_ACCOUNT_KEY_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./home/dokkiitech/product/okusuri/serviceAccountKey.json";
 const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!;
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN!;
 
