@@ -12,7 +12,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
 } from "firebase/auth"
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
+import { doc, setDoc, getDoc, serverTimestamp, query, collection, where, getDocs } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 
 interface CustomUser extends User {

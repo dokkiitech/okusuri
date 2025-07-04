@@ -22,7 +22,7 @@ const loginFormSchema = z.object({
 type LoginFormValues = z.infer<typeof loginFormSchema>
 
 export default function LoginPage() {
-  const { signIn } = useAuth()
+  const { signIn, user, loading } = useAuth()
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,6 +39,12 @@ export default function LoginPage() {
 
     setEnvVars(`API Key: ${maskedApiKey}, Auth Domain: ${process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "未設定"}`)
   }, [])
+
+  useEffect(() => {
+    if (user && !loading) {
+      router.push("/dashboard")
+    }
+  }, [user, loading, router])
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -60,7 +66,6 @@ export default function LoginPage() {
         title: "ログイン成功",
         description: "アプリにログインしました",
       })
-      router.push("/dashboard")
     } catch (error: any) {
       console.error("ログインエラー:", error)
 
