@@ -41,7 +41,7 @@ jobs:
 
       - name: SSH into server and deploy
         run: |
-          ssh -p ${{ secrets.SSH_PORT }} {{ secrets.USER_NAME }}@${{ secrets.SERVER_IP }} <<'EOF'
+          ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.SERVER_IP }} <<'EOF'
             cd /home/dokkiitech/product/okusuri
             git pull origin main
             pnpm install
