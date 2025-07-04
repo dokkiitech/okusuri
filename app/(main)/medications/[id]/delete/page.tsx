@@ -18,69 +18,53 @@ export default function DeleteMedicationPage({ params }: { params: { id: string 
   const [loading, setLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isParentAccount, setIsParentAccount] = useState(false)
-  const [loadingParentalCheck, setLoadingParentalCheck] = useState(true)
 
   useEffect(() => {
-    const checkParentalStatus = async () => {
-      if (!user || !db) {
-        setLoadingParentalCheck(false)
-        return
-      }
-      try {
-        const userSettingsRef = doc(db, "userSettings", user.uid)
-        const userSettingsSnap = await getDoc(userSettingsRef)
-        if (userSettingsSnap.exists()) {
-          const settings = userSettingsSnap.data()
-          if (settings.linkedAccounts && settings.linkedAccounts.length > 0) {
-            setIsParentAccount(true)
-            router.replace("/medications") // 親アカウントの場合はリダイレクト
-            return
-          }
-        }
-      } catch (error) {
-        console.error("Failed to check parental status:", error)
-      } finally {
-        setLoadingParentalCheck(false)
-      }
-    }
-    checkParentalStatus()
-  }, [user, router])
+    if (!user || !params.id || !db) return
 
-  useEffect(() => {
-    if (!user || !params.id || !db || loadingParentalCheck || isParentAccount) return
-
-    const fetchMedication = async () => {
+    const fetchAndAuthorizeMedication = async () => {
       try {
         const medicationDoc = await getDoc(doc(db, "medications", params.id))
 
         if (medicationDoc.exists()) {
           const medicationData = medicationDoc.data()
 
-          // ユーザーIDが一致するか確認
-          if (medicationData.userId !== user.uid) {
-            setError("このお薬の削除権限がありません")
-            setLoading(false)
-            return
+          // Authorization check
+          const isOwner = medicationData.userId === user.uid
+          let isAuthorizedParent = false
+
+          if (!isOwner) {
+            const userSettingsRef = doc(db, "userSettings", user.uid)
+            const userSettingsSnap = await getDoc(userSettingsRef)
+            if (userSettingsSnap.exists()) {
+              const settings = userSettingsSnap.data()
+              if (settings.linkedAccounts && settings.linkedAccounts.includes(medicationData.userId)) {
+                isAuthorizedParent = true
+              }
+            }
           }
 
-          setMedication({
-            id: medicationDoc.id,
-            ...medicationData,
-          })
+          if (isOwner || isAuthorizedParent) {
+            setMedication({
+              id: medicationDoc.id,
+              ...medicationData,
+            })
+          } else {
+            setError("このお薬の削除権限がありません")
+          }
         } else {
           setError("お薬が見つかりませんでした")
         }
       } catch (error) {
-        console.error("お薬データの取得に失敗しました:", error)
+        console.error("お薬データの取得または権限の確認に失敗しました:", error)
         setError("お薬データの取得に失敗しました")
       } finally {
         setLoading(false)
       }
     }
 
-    fetchMedication()
-  }, [user, params.id, db, loadingParentalCheck, isParentAccount])
+    fetchAndAuthorizeMedication()
+  }, [user, params.id, db])
 
   const handleDelete = async () => {
     if (!medication || !db || !user || isParentAccount) return
