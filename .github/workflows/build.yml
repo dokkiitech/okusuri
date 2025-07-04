@@ -1,4 +1,4 @@
-name: Deploy to PM2 Server Only
+name: build
 
 on:
   push:
@@ -34,12 +34,17 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Add server to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p ${{ secrets.SSH_PORT }} ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
       - name: SSH into server and deploy
         run: |
-          ssh -o StrictHostKeyChecking=no root@${{ secrets.SERVER_IP }} << 'EOF'
+          ssh -p ${{ secrets.SSH_PORT }} root@${{ secrets.SERVER_IP }} <<'EOF'
             cd /root/okusuri
-            pnpm install
             git pull origin main
+            pnpm install
             pnpm build
             pm2 restart okusurikanri
           EOF
