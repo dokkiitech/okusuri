@@ -201,7 +201,7 @@ export default function SettingsPage() {
       }
       const reminderData = {
         ...values,
-        頓服: values.頓服 || undefined, // 空文字の場合は undefined として保存
+        頓服: values.頓服 || "", // 空文字の場合は空文字として保存
       }
       await updateDoc(doc(db, "userSettings", user.uid), {
         reminderTimes: reminderData,
@@ -496,33 +496,15 @@ export default function SettingsPage() {
         console.log("通知設定をFirestoreに保存しました:", enabled);
 
         if (enabled) {
-          // If notifications are being enabled, attempt to set up push notifications
-          console.log("プッシュ通知の有効化を試みます...");
-          const pushEnabled = await enablePushNotifications(user.uid); // Call the imported function
-          if (pushEnabled) {
-            toast({
-              title: "通知が有効になりました",
-              description: "ブラウザ通知とプッシュ通知の準備ができました。",
-            });
-          } else {
-            // This else block might be hit if user denies permission, or if getToken fails for other reasons.
-            // enablePushNotifications itself logs more specific errors.
-            toast({
-              title: "プッシュ通知設定失敗",
-              description: "通知は許可設定になりましたが、プッシュ通知用の登録に一部失敗しました。ブラウザの通知設定を確認するか、後でもう一度お試しください。",
-              variant: "destructive",
-            });
-            // Optional: Revert setNotificationsEnabled(true) if pushEnabled is false and push is mandatory for this toggle.
-            // For now, we keep notificationsEnabled as true in Firestore, as the user *intended* to enable them.
-          }
+          toast({
+            title: "通知が有効になりました",
+            description: "LINE通知が有効になりました。",
+          });
         } else {
-          // If notifications are being disabled
           toast({
             title: "通知が無効になりました",
-            description: "ブラウザ通知が無効に設定されました。",
+            description: "LINE通知が無効になりました。",
           });
-          // Consider if FCM token should be deleted from Firestore here for a full "disable".
-          // For this task, just updating the flag is sufficient.
         }
       } catch (error) {
         console.error("通知設定の処理中にエラーが発生しました:", error);
