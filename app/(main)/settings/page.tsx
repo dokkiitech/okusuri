@@ -489,6 +489,7 @@ export default function SettingsPage() {
           return;
         }
         // Save the preference to Firestore first
+        console.log("通知設定をFirestoreに保存します。enabled:", enabled);
         await updateDoc(doc(db, "userSettings", user.uid), {
           notificationsEnabled: enabled,
           updatedAt: new Date(),
@@ -510,7 +511,7 @@ export default function SettingsPage() {
         console.error("通知設定の処理中にエラーが発生しました:", error);
         toast({
           title: "エラー",
-          description: "通知設定の更新に失敗しました。",
+          description: `通知設定の更新に失敗しました: ${error.message || error}`, // エラーメッセージを表示
           variant: "destructive",
         });
         setNotificationsEnabled(!enabled); // Revert UI on error
