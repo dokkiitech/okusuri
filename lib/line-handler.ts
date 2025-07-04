@@ -156,7 +156,7 @@ export async function handleTextMessage(userId: string, text: string, replyToken
           contents: [
             {
               type: "text",
-              text: "💊 おくすり管理LINEヘルプ 💊",
+              text: "💊 使い方 💊",
               weight: "bold",
               size: "xl",
               align: "center",
