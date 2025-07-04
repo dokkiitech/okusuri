@@ -49,7 +49,7 @@ jobs:
 
       - name: SSH into server and deploy
         run: |
-          ssh -p 22 root@127.0.0.1 <<'EOF'
+          ssh -p 22 dokkiitech@127.0.0.1 <<'EOF'
             cd /home/dokkiitech/product/okusuri
             git pull origin main
             pnpm install
