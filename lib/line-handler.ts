@@ -1,7 +1,7 @@
 import { Client } from "@line/bot-sdk";
 import { adminDb } from "@/lib/firebase-admin";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { askGemini } from "@/lib/gemini"; // 既存のGemini AI関数
+import { Medication } from "@/lib/types"; // Medicationインターフェースをインポート
 
 const config = {
   channelSecret: process.env.LINE_CHANNEL_SECRET!,
@@ -22,19 +22,45 @@ export async function sendLineMessage(userId: string, message: string) {
 }
 
 export async function handleTextMessage(userId: string, text: string, replyToken: string) {
-  // 1. アカウント連携コードの処理 (ペアレンタルコントロールと同じものを利用)
-  // ここでは、`text` が連携コードとして直接ユーザーIDを指していると仮定します。
-  // 実際のペアレンタルコントロールの連携コードの仕組みに合わせて調整が必要です。
-  const userDocRef = adminDb.collection('users').doc(text); // 例: usersコレクションにユーザー情報がある場合
-  const userDocSnap = await userDocRef.get();
+  console.log(`[LINE Handler] Received message from userId: ${userId}, text: ${text}`);
 
-  if (userDocSnap.exists()) {
+  // 1. アカウント連携コードの処理 (ペアレンタルコントロールと同じものを利用)
+  // `text` が連携コードとして送信される。
+  // `userSettings` コレクションの `linkCode` フィールドを検索する。
+  const userSettingsSnapshot = await adminDb.collection('userSettings').where('linkCode', '==', text).limit(1).get();
+
+  if (!userSettingsSnapshot.empty) {
+    const userSettingDoc = userSettingsSnapshot.docs[0];
+    const appUserId = userSettingDoc.id; // userSettingsのドキュメントIDがappUserId
+
     // 連携コード（ユーザーID）が見つかった場合
     const lineConnectionRef = adminDb.collection('lineConnections').doc(userId);
-    await lineConnectionRef.set({ appUserId: text, linkedAt: new Date() });
+    await lineConnectionRef.set({ appUserId: appUserId, linkedAt: new Date() });
     await client.replyMessage(replyToken, {
-      type: "text",
-      text: "アカウントの連携が完了しました！",
+      type: "flex",
+      altText: "アカウント連携完了",
+      contents: {
+        type: "bubble",
+        body: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "アカウント連携完了",
+              weight: "bold",
+              size: "md",
+              color: "#1DB446",
+            },
+            {
+              type: "text",
+              text: "アカウントの連携が完了しました！",
+              wrap: true,
+              margin: "md",
+            },
+          ],
+        },
+      },
     });
     return;
   }
@@ -42,14 +68,52 @@ export async function handleTextMessage(userId: string, text: string, replyToken
   // 2. 連携済みユーザーか確認
   const lineConnectionRef = adminDb.collection('lineConnections').doc(userId);
   const lineConnectionSnap = await lineConnectionRef.get();
-  if (!lineConnectionSnap.exists()) {
+  console.log(`[LINE Handler] lineConnectionSnap.exists for userId (${userId}): ${lineConnectionSnap.exists}`);
+
+  let appUserId: string | undefined;
+  if (lineConnectionSnap.exists) {
+    appUserId = lineConnectionSnap.data()?.appUserId;
+  }
+
+  if (!appUserId) {
     await client.replyMessage(replyToken, {
-      type: "text",
-      text: "アカウントが連携されていません。アプリの設定画面から連携コードを送信してください。",
+      type: "flex",
+      altText: "アカウント未連携",
+      contents: {
+        type: "bubble",
+        body: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "アカウント未連携",
+              weight: "bold",
+              size: "md",
+              color: "#FF0000",
+            },
+            {
+              type: "text",
+              text: "アカウントが連携されていません。アプリの設定画面から連携コードコピーし、トーク画面に送信してください。",
+              wrap: true,
+              margin: "md",
+            },
+          ],
+        },
+      },
     });
     return;
   }
-  const { appUserId } = lineConnectionSnap.data();
+
+  // ユーザーの登録済みお薬情報を取得
+  let userMedications: Medication[] = [];
+  try {
+    const medicationsSnapshot = await adminDb.collection("medications").where("userId", "==", appUserId).get();
+    userMedications = medicationsSnapshot.docs.map(doc => doc.data() as Medication);
+    console.log(`[LINE Handler] Fetched ${userMedications.length} medications for appUserId: ${appUserId}`);
+  } catch (error) {
+    console.error(`[LINE Handler] Error fetching medications for appUserId ${appUserId}:`, error);
+  }
 
   // 3. AIへの質問の処理
   if (text.startsWith("AIに質問")) {
@@ -64,7 +128,7 @@ export async function handleTextMessage(userId: string, text: string, replyToken
   // AIに質問の後に続けて質問文が送信された場合に限り返答
   if (userAIState[userId] && !text.startsWith("AIに質問")) {
     userAIState[userId] = false; // 一回の質問で状態をリセット
-    const aiResponse = await askGemini(text); // 既存のAI関数を呼び出す
+    const aiResponse = await askGemini(text, userMedications); // 既存のAI関数を呼び出す
     await client.replyMessage(replyToken, {
       type: "text",
       text: aiResponse,
@@ -72,25 +136,130 @@ export async function handleTextMessage(userId: string, text: string, replyToken
     return;
   }
 
-  // 4. 飲み合わせ確認の処理
-  if (text.startsWith("飲み合わせ確認")) {
-    const medications = text.replace("飲み合わせ確認", "").trim().split(/[,、\s]+/);
-    if (medications.length < 2) {
-      await client.replyMessage(replyToken, {
-        type: "text",
-        text: "飲み合わせ確認ですね。複数のお薬の名前を「、」で区切って入力してください。（例: ロキソニン、カロナール）",
-      });
-      return;
+  // 5. ヘルプコマンドの処理
+  if (text === "ヘルプ") {
+    let statusText = "";
+    if (appUserId) {
+      statusText = "現在、アカウントは連携済みです。";
+    } else {
+      statusText = "現在、アカウントは未連携です。連携コードを送信して連携してください。";
     }
 
-    // ここに実際の飲み合わせ確認ロジックを実装します。
-    // 例: 外部APIへの問い合わせ、データベース検索など。
-    // 今回はダミーの応答を返します。
-    const interactionResult = `「${medications.join("」と「")}」の飲み合わせを確認しました。\n現時点では、特筆すべき相互作用は見つかりませんでした。\n\n※これはデモンストレーションです。実際の服薬については医師や薬剤師にご相談ください。`;
+    const flexMessage = {
+      type: "flex",
+      altText: "ヘルプメッセージ",
+      contents: {
+        type: "bubble",
+        body: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "ご利用可能なコマンド一覧",
+              weight: "bold",
+              size: "md",
+              margin: "md",
+            },
+            {
+              type: "separator",
+              margin: "md",
+            },
+            {
+              type: "text",
+              text: statusText,
+              wrap: true,
+              margin: "md",
+              color: appUserId ? "#1DB446" : "#FF0000", // 緑か赤で表示
+            },
+            {
+              type: "separator",
+              margin: "md",
+            },
+            {
+              type: "box",
+              layout: "vertical",
+              margin: "lg",
+              spacing: "sm",
+              contents: [
+                {
+                  type: "text",
+                  text: "1. アカウント連携",
+                  weight: "bold",
+                },
+                {
+                  type: "text",
+                  text: "アプリの設定画面で表示される連携コードを送信してください。",
+                  wrap: true,
+                  size: "sm",
+                  color: "#666666",
+                },
+                {
+                  type: "text",
+                  text: "2. AIに質問",
+                  weight: "bold",
+                  margin: "md",
+                },
+                {
+                  type: "text",
+                  text: "まず「AIに質問」と送信し、続けて質問内容を送信してください。",
+                  wrap: true,
+                  size: "sm",
+                  color: "#666666",
+                },
+                {
+                  type: "text",
+                  text: "3. 連携解除",
+                  weight: "bold",
+                  margin: "md",
+                },
+                {
+                  type: "text",
+                  text: "アカウント連携を解除します。",
+                  wrap: true,
+                  size: "sm",
+                  color: "#666666",
+                },
+              ],
+            },
+          ],
+        },
+      },
+    };
 
+    await client.replyMessage(replyToken, flexMessage);
+    return;
+  }
+
+  // 4. 連携解除の処理
+  if (text === "連携解除") {
+    const lineConnectionRef = adminDb.collection('lineConnections').doc(userId);
+    await lineConnectionRef.delete();
     await client.replyMessage(replyToken, {
-      type: "text",
-      text: interactionResult,
+      type: "flex",
+      altText: "連携解除完了",
+      contents: {
+        type: "bubble",
+        body: {
+          type: "box",
+          layout: "vertical",
+          contents: [
+            {
+              type: "text",
+              text: "連携解除完了",
+              weight: "bold",
+              size: "md",
+              color: "#1DB446",
+            },
+            {
+              type: "text",
+              text: "アカウントの連携を解除しました。",
+              wrap: true,
+              margin: "md",
+            },
+          ],
+        },
+      },
     });
     return;
   }
