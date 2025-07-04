@@ -11,6 +11,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "latest",
+    "@line/bot-sdk": "^10.0.0",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-alert-dialog": "^1.1.4",
     "@radix-ui/react-aspect-ratio": "^1.1.1",
@@ -45,6 +46,7 @@
     "date-fns": "latest",
     "embla-carousel-react": "8.5.1",
     "firebase": "^11.4.0",
+    "firebase-admin": "^13.4.0",
     "framer-motion": "^12.18.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",

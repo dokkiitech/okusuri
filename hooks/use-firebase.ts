@@ -33,14 +33,8 @@ export function useFirebase() {
         setDb(firestore)
 
         // PWA環境でのみメッセージングを初期化
-        if ("serviceWorker" in navigator && "PushManager" in window) {
-          try {
-            const firebaseMessaging = getMessaging(firebaseApp)
-            setMessaging(firebaseMessaging)
-          } catch (e) {
-            console.log("Messaging could not be initialized:", e)
-          }
-        }
+        // Webプッシュ通知はLINE通知に置き換えられたため、関連コードは削除または無効化されます。
+  // 必要に応じて、将来的に再導入することも可能です。
 
         setLoading(false)
       } catch (err) {
