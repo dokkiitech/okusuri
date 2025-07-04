@@ -69,43 +69,39 @@ export default function EditMedicationPage() {
   })
 
   useEffect(() => {
-    const checkParentalStatus = async () => {
-      if (!user || !db) {
-        setLoadingParentalCheck(false)
-        return
-      }
-      try {
-        const userSettingsRef = doc(db, "userSettings", user.uid)
-        const userSettingsSnap = await getDoc(userSettingsRef)
-        if (userSettingsSnap.exists()) {
-          const settings = userSettingsSnap.data()
-          if (settings.linkedAccounts && settings.linkedAccounts.length > 0) {
-            setIsParentAccount(true)
-            router.replace("/medications") // 親アカウントの場合はリダイレクト
-            return
-          }
-        }
-      } catch (error) {
-        console.error("Failed to check parental status:", error)
-      } finally {
-        setLoadingParentalCheck(false)
-      }
-    }
-    checkParentalStatus()
-  }, [user, router])
+    if (!user || !medicationId || !db) return
 
-  useEffect(() => {
-    if (!user || !medicationId || !db || loadingParentalCheck || isParentAccount) return
-
-    const fetchMedication = async () => {
+    const fetchAndAuthorizeMedication = async () => {
       setIsLoading(true)
       try {
         const medicationRef = doc(db, "medications", medicationId)
         const medicationSnap = await getDoc(medicationRef)
 
-        if (medicationSnap.exists()) {
-          const data = medicationSnap.data() as MedicationData
-          setInitialMedicationData(data) // 元のデータを保持
+        if (!medicationSnap.exists()) {
+          showCentralNotification("お薬が見つかりませんでした")
+          router.push("/medications")
+          return
+        }
+
+        const data = medicationSnap.data() as MedicationData
+
+        // Authorization check
+        const isOwner = data.userId === user.uid
+        let isAuthorizedParent = false
+
+        if (!isOwner) {
+          const userSettingsRef = doc(db, "userSettings", user.uid)
+          const userSettingsSnap = await getDoc(userSettingsRef)
+          if (userSettingsSnap.exists()) {
+            const settings = userSettingsSnap.data()
+            if (settings.linkedAccounts && settings.linkedAccounts.includes(data.userId)) {
+              isAuthorizedParent = true
+            }
+          }
+        }
+
+        if (isOwner || isAuthorizedParent) {
+          setInitialMedicationData(data)
           form.reset({
             name: data.name,
             dosagePerTime: data.dosagePerTime,
@@ -114,19 +110,21 @@ export default function EditMedicationPage() {
             notes: data.notes || "",
           })
         } else {
-          showCentralNotification("お薬が見つかりませんでした");
+          // Not owner and not an authorized parent
+          showCentralNotification("このお薬を編集する権限がありません")
           router.push("/medications")
         }
       } catch (error) {
-        console.error("お薬データの取得に失敗しました:", error)
-        showCentralNotification("お薬データの取得に失敗しました");
+        console.error("お薬データの取得または権限の確認に失敗しました:", error)
+        showCentralNotification("お薬データの取得に失敗しました")
+        router.push("/medications")
       } finally {
         setIsLoading(false)
       }
     }
 
-    fetchMedication()
-  }, [user, medicationId, form, router, db, loadingParentalCheck, isParentAccount])
+    fetchAndAuthorizeMedication()
+  }, [user, medicationId, form, router, db])
 
   const onSubmit = async (data: MedicationFormValues) => {
     if (!user || !medicationId || !initialMedicationData || isParentAccount) return

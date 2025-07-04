@@ -1,3 +1,4 @@
+"use client"
 import { getMessaging, getToken, onMessage } from "firebase/messaging"
 import { setDoc, doc, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
