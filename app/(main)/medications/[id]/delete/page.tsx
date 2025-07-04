@@ -67,86 +67,15 @@ export default function DeleteMedicationPage({ params }: { params: { id: string 
   }, [user, params.id, db])
 
   const handleDelete = async () => {
-    if (!medication || !db || !user || isParentAccount) return
+    if (!medication || !db || !user) return
 
     setIsDeleting(true)
-    let recordsDeleted = false
-    let recordsError = null
-
     try {
-      console.log(`削除を開始: ${medication.id}`)
-
-      // 関連する服薬記録の削除を試みる
-      try {
-        const recordsQuery = query(collection(db, "medicationRecords"), where("medicationId", "==", medication.id))
-        const recordsSnapshot = await getDocs(recordsQuery)
-        console.log(`関連する服薬記録: ${recordsSnapshot.size}件`)
-
-        if (recordsSnapshot.size > 0) {
-          // 少数の記録の場合は個別に削除
-          if (recordsSnapshot.size <= 20) {
-            for (const docSnapshot of recordsSnapshot.docs) {
-              try {
-                await deleteDoc(doc(db, "medicationRecords", docSnapshot.id))
-              } catch (individualError) {
-                console.error(`記録 ${docSnapshot.id} の削除に失敗:`, individualError)
-                // 個別のエラーは無視して続行
-              }
-            }
-          } else {
-            // 多数の記録の場合はバッチ処理を使用
-            // Firestoreのバッチ処理は最大500件まで
-            const batches = []
-            let currentBatch = writeBatch(db)
-            let operationCount = 0
-
-            recordsSnapshot.docs.forEach((docSnapshot) => {
-              currentBatch.delete(doc(db, "medicationRecords", docSnapshot.id))
-              operationCount++
-
-              // 500件ごとに新しいバッチを作成
-              if (operationCount === 500) {
-                batches.push(currentBatch)
-                currentBatch = writeBatch(db)
-                operationCount = 0
-              }
-            })
-
-            // 残りのオペレーションがあれば、最後のバッチに追加
-            if (operationCount > 0) {
-              batches.push(currentBatch)
-            }
-
-            // すべてのバッチを実行
-            for (const batch of batches) {
-              try {
-                await batch.commit()
-              } catch (batchError) {
-                console.error("バッチ処理中にエラー:", batchError)
-                // バッチエラーは記録して続行
-              }
-            }
-          }
-        }
-
-        recordsDeleted = true
-        console.log("関連する服薬記録の削除完了")
-      } catch (recordError) {
-        console.error("服薬記録の削除中にエラー:", recordError)
-        recordsError = recordError
-        // 記録の削除に失敗しても続行
-      }
-
-      // 最後に薬自体を削除
+      // 薬自体を削除
       await deleteDoc(doc(db, "medications", medication.id))
       console.log("薬の削除完了")
 
-      // 成功メッセージを表示（記録削除の結果に応じて）
-      if (recordsDeleted) {
-        showCentralNotification("削除完了: お薬とその記録が削除されました");
-      } else {
-        showCentralNotification("一部削除完了: お薬は削除されましたが、記録の削除に失敗しました");
-      }
+      showCentralNotification("お薬が削除されました");
 
       // 一覧ページにリダイレクト
       router.push("/medications")

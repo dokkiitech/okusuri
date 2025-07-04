@@ -41,33 +41,6 @@ export default function AddMedicationPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isParentAccount, setIsParentAccount] = useState(false)
-  const [loadingParentalCheck, setLoadingParentalCheck] = useState(true)
-
-  useEffect(() => {
-    const checkParentalStatus = async () => {
-      if (!user || !db) {
-        setLoadingParentalCheck(false)
-        return
-      }
-      try {
-        const userSettingsRef = doc(db, "userSettings", user.uid)
-        const userSettingsSnap = await getDoc(userSettingsRef)
-        if (userSettingsSnap.exists()) {
-          const settings = userSettingsSnap.data()
-          if (settings.linkedAccounts && settings.linkedAccounts.length > 0) {
-            setIsParentAccount(true)
-            router.replace("/medications") // 親アカウントの場合はリダイレクト
-          }
-        }
-      } catch (error) {
-        console.error("Failed to check parental status:", error)
-      } finally {
-        setLoadingParentalCheck(false)
-      }
-    }
-    checkParentalStatus()
-  }, [user, router])
 
   const form = useForm<MedicationFormValues>({
     resolver: zodResolver(medicationFormSchema),
@@ -81,8 +54,7 @@ export default function AddMedicationPage() {
   })
 
   const onSubmit = async (data: MedicationFormValues) => {
-    if (!user || isParentAccount) return
-
+    if (!user) return
 
     setIsSubmitting(true)
     try {
