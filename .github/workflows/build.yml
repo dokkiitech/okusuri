@@ -33,27 +33,26 @@ jobs:
       - name: Create SSH config for Cloudflare
         run: |
           mkdir -p ~/.ssh
-          cat <<EOF > ~/.ssh/config
-Host cloudflare-server
-  HostName ${{ secrets.CLOUDFLARE_HOSTNAME }}
-  User root
-  ProxyCommand cloudflared access ssh \
-    --hostname %h \
-    --id ${{ secrets.CLOUDFLARE_SERVICE_TOKEN_ID }} \
-    --secret ${{ secrets.CLOUDFLARE_SERVICE_TOKEN_SECRET }} \
-    --destination 127.0.0.1:22
-EOF
+          echo "Host cloudflare-server" > ~/.ssh/config
+          echo "  HostName ${{ secrets.CLOUDFLARE_HOSTNAME }}" >> ~/.ssh/config
+          echo "  User root" >> ~/.ssh/config
+          echo "  ProxyCommand cloudflared access ssh \\" >> ~/.ssh/config
+          echo "    --hostname %h \\" >> ~/.ssh/config
+          echo "    --id ${{ secrets.CLOUDFLARE_SERVICE_TOKEN_ID }} \\" >> ~/.ssh/config
+          echo "    --secret ${{ secrets.CLOUDFLARE_SERVICE_TOKEN_SECRET }} \\" >> ~/.ssh/config
+          echo "    --destination 127.0.0.1:22" >> ~/.ssh/config
 
       - name: Add known host (bypass warning)
         run: |
+          mkdir -p ~/.ssh
           ssh-keyscan -p 22 127.0.0.1 >> ~/.ssh/known_hosts || true
 
       - name: SSH into server and deploy
         run: |
-          ssh -o StrictHostKeyChecking=no cloudflare-server << 'EOF'
-            cd /home/dokkiitech/product/okusuri
-            git pull origin main
-            pnpm install
-            pnpm build
-            pm2 restart okusuri
+          ssh -o StrictHostKeyChecking=no cloudflare-server <<EOF
+          cd /home/dokkiitech/product/okusuri
+          git pull origin main
+          pnpm install
+          pnpm build
+          pm2 restart okusuri
           EOF
