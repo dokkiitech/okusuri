@@ -34,3 +34,5 @@ export function formatTime(date: Date | null): string {
   }).format(date)
 }
 
+export const REMAINING_PILLS_THRESHOLD_DAYS = 7; // 残薬通知の閾値（日数）
+

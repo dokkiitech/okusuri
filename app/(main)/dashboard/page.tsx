@@ -259,6 +259,21 @@ export default function DashboardPage() {
             updatedAt: serverTimestamp(),
           })
 
+          // 残薬通知のロジック
+          const dosesPerDay = med.frequency.length * med.dosagePerTime;
+          if (dosesPerDay > 0) {
+            const remainingDays = newRemainingPills / dosesPerDay;
+            if (remainingDays <= REMAINING_PILLS_THRESHOLD_DAYS) {
+              const message = `${med.name}の残りが少なくなっています。残り約${Math.ceil(remainingDays)}日分です。`;
+              showCentralNotification(message);
+              sendPushNotification(user.uid, "残薬が少なくなっています", message);
+              // LINE連携しているユーザーにはLINEでも通知
+              if (user.lineUid) {
+                sendLineMessage(user.lineUid, message);
+              }
+            }
+          }
+
           // Update local state for todayRecords
           newTodayRecords.push({
             id: recordRef.id,

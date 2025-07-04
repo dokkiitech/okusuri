@@ -15,8 +15,12 @@ import {
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore"
 import { auth, db } from "@/lib/firebase"
 
+interface CustomUser extends User {
+  lineUid?: string; // LINEユーザーIDを追加
+}
+
 type AuthContextType = {
-  user: User | null
+  user: CustomUser | null
   loading: boolean
   signUp: (email: string, password: string, displayName: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
@@ -27,7 +31,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<CustomUser | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -49,13 +53,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const userRef = doc(db, "users", currentUser.uid)
         const userSnap = await getDoc(userRef)
-        let updatedUser = currentUser
+        let updatedUser: CustomUser = currentUser
 
         if (userSnap.exists()) {
           const firestoreData = userSnap.data()
           // FirestoreのdisplayNameがAuthのdisplayNameと異なる場合、Firestoreのものを優先
           if (firestoreData.displayName && firestoreData.displayName !== currentUser.displayName) {
-            updatedUser = { ...currentUser, displayName: firestoreData.displayName } as User
+            updatedUser = { ...currentUser, displayName: firestoreData.displayName } as CustomUser
           }
         } else {
           // 新規ユーザーの場合、Firestoreにユーザー情報を作成
@@ -67,6 +71,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             updatedAt: serverTimestamp(),
           })
         }
+
+        // LINE連携情報を取得
+        const lineConnectionQuery = query(collection(db, "lineConnections"), where("appUserId", "==", currentUser.uid));
+        const lineConnectionSnap = await getDocs(lineConnectionQuery);
+        if (!lineConnectionSnap.empty) {
+          const lineUid = lineConnectionSnap.docs[0].id; // lineConnectionsのドキュメントIDがLINE UID
+          updatedUser = { ...updatedUser, lineUid };
+        }
+
         setUser(updatedUser)
       } else {
         setUser(null)
