@@ -17,12 +17,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install pnpm (safe way)
+      - name: Install pnpm (GitHub Actions内で一応)
         run: |
           curl -fsSL https://get.pnpm.io/install.sh | sh -
           echo "$HOME/.local/share/pnpm" >> $GITHUB_PATH
@@ -42,9 +42,10 @@ jobs:
       - name: SSH into server and deploy
         run: |
           ssh -p ${{ secrets.SSH_PORT }} ${{ secrets.USER_NAME }}@${{ secrets.SERVER_IP }} <<'EOF'
-            cd /home/dokkiitech/product/okusuri
+            export PATH=$PATH:/home/${USER}/.nvm/versions/node/v22.16.0/bin
+            cd /home/${USER}/product/okusuri
             git pull origin main
-            pnpm install
-            pnpm build
-            pm2 restart okusuri
+            /home/${USER}/.nvm/versions/node/v22.16.0/bin/pnpm install
+            /home/${USER}/.nvm/versions/node/v22.16.0/bin/pnpm build
+            /home/${USER}/.nvm/versions/node/v22.16.0/bin/pm2 restart okusuri
           EOF
