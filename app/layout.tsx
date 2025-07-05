@@ -12,7 +12,7 @@ const notoSansJp = Noto_Sans_JP({
 })
 
 export const metadata: Metadata = {
-  title: "服薬管理アプリ",
+  title: "のむRhythm",
   description: "お薬の服用を簡単に管理できるアプリ���す",
   manifest: "/manifest.json",
   icons: [

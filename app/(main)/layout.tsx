@@ -69,7 +69,7 @@ export default function MainLayout({
       <div className="px-4 py-6">
         <Link href="/dashboard" className="flex items-center gap-2 mb-8">
           <PillIcon className="h-8 w-8 text-primary" />
-          <h1 className="text-xl font-bold">Okusuri</h1>
+          <h1 className="text-xl font-bold">のむRhythm</h1>
         </Link>
         <ul className="space-y-2">
           {navItems.map((item) => {
@@ -128,7 +128,7 @@ export default function MainLayout({
           <header className="fixed top-0 left-0 right-0 flex items-center justify-between h-16 px-4 bg-background/80 backdrop-blur-sm border-b z-40">
             <Link href="/dashboard" className="flex items-center gap-2">
               <PillIcon className="h-6 w-6 text-primary" />
-              <span className="font-bold">Okusuri</span>
+              <span className="font-bold">のむリズム</span>
             </Link>
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>

@@ -1,6 +1,6 @@
 {
-  "name": "服薬管理アプリ",
-  "short_name": "服薬管理",
+  "name": "のむRhythm",
+  "short_name": "のむRhythm",
   "description": "お薬の服用を簡単に管理できるアプリです",
   "start_url": "/",
   "display": "standalone",

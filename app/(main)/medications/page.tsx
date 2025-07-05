@@ -352,7 +352,7 @@ export default function MedicationsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">お薬管理</h1>
+        <h1 className="text-3xl font-bold tracking-tight">のむRhythm</h1>
         <div className="flex flex-col sm:flex-row gap-2">
           {!isParentalView && (
             <Button onClick={handleAddMedication}>
