@@ -23,20 +23,20 @@
 ```mermaid
 graph LR
     subgraph User Interface
-        A[📱 Client (Web/Mobile)]
+        A[Client (Web/Mobile)]
     end
 
     subgraph Infrastructure
-        B(🌐 CDN / Load Balancer)
+        B(CDN / Load Balancer)
     end
 
     subgraph Backend Services
-        C(🚀 Next.js App Server)
-        D(🔑 Firebase Authentication)
-        E(🔥 Firebase Functions / API)
-        F(🗄️ Firestore Database)
-        G(💬 LINE Messaging API)
-        H(🔔 Firebase Cloud Messaging)
+        C(Next.js App Server)
+        D(Firebase Authentication)
+        E(Firebase Functions / API)
+        F(Firestore Database)
+        G(LINE Messaging API)
+        H(Firebase Cloud Messaging)
     end
 
     A -- UI/Static Assets --> B
