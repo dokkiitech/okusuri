@@ -22,40 +22,57 @@
 
 ```mermaid
 graph LR
-    subgraph User Interface
-        A[Client (Web/Mobile)]
+    subgraph User
+        U[User]
     end
 
-    subgraph Infrastructure
-        B(CDN / Load Balancer)
+    subgraph Frontend
+        F(Next.js Frontend)
     end
 
-    subgraph Backend Services
-        C(Next.js App Server)
-        D(Firebase Authentication)
-        E(Firebase Functions / API)
-        F(Firestore Database)
-        G(LINE Messaging API)
-        H(Firebase Cloud Messaging)
+    subgraph Backend
+        A(Firebase Auth)
+        D(Firestore Database)
+        C(Next.js API Route - LINE Webhook)
+        L(LINE Handler)
+        G(Gemini AI)
+        S(Scheduler Script)
+        M(Firebase Cloud Messaging - FCM)
     end
 
-    A -- UI/Static Assets --> B
-    B -- Requests --> C
-    A -- Authentication --> D
-    A -- API Calls --> E
-    D -- Authenticates --> E
-    E -- Read/Write Data --> F
-    E -- Send LINE Message --> G
-    E -- Send Push Notification --> H
+    subgraph External Services
+        X(LINE Messaging API)
+    end
 
-    style A fill:#e0f2f7,stroke:#0288d1,stroke-width:2px,color:#000
-    style B fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
-    style C fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
-    style D fill:#ffe0b2,stroke:#ef6c00,stroke-width:2px,color:#000
-    style E fill:#ffe0b2,stroke:#ef6c00,stroke-width:2px,color:#000
-    style F fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    style G fill:#e1f5fe,stroke:#039be5,stroke-width:2px,color:#000
-    style H fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
+    U -- Web Browser/Mobile App --> F
+    U -- LINE App --> X
+
+    F -- Auth/Data Save --> A
+    F -- Data Save/Retrieve --> D
+    F -- Push Notification Register --> M
+
+    X -- Webhook --> C
+    C -- Message Process/AI --> L
+    L -- Data Save/Retrieve --> D
+    L -- AI Query --> G
+    L -- Send LINE Message --> X
+
+    S -- Data Retrieve --> D
+    S -- Send Push Notification --> M
+
+    M -- Push Notification --> U
+    X -- LINE Notification --> U
+
+    style U fill:#e0f2f7,stroke:#0288d1,stroke-width:2px,color:#000
+    style F fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    style A fill:#ffe0b2,stroke:#ef6c00,stroke-width:2px,color:#000
+    style D fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    style C fill:#e1f5fe,stroke:#039be5,stroke-width:2px,color:#000
+    style L fill:#e1f5fe,stroke:#039be5,stroke-width:2px,color:#000
+    style G fill:#c8e6c9,stroke:#4caf50,stroke-width:2px,color:#000
+    style S fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
+    style M fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
+    style X fill:#bbdefb,stroke:#2196f3,stroke-width:2px,color:#000
 ```
 
 **コンポーネントの説明:**
