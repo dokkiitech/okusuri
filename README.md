@@ -82,7 +82,6 @@ graph LR
 -   **LINE Handler**: LINEメッセージの解析、アカウント連携、AI相談の処理、LINEへの返信など、LINE関連のロジックを管理します。
 -   **Firebase Authentication**: ユーザー認証を管理します。
 -   **Firestore Database**: ユーザーデータ、服薬記録、スケジュール、通知設定などをリアルタイムで保存・同期します。
--   **Firebase Cloud Messaging (FCM)**: Webプッシュ通知の送信を管理します。
 -   **Gemini AI**: LINEからのAI相談リクエストに対して、服薬に関する情報を提供します。
 -   **サーバーサイド リマインダースクリプト**: 独立して動作し、Firestoreからリマインダー情報を取得し、FCMを通じてプッシュ通知を送信します。これはNext.jsアプリケーションのホスティングとは別に、ユーザーが管理するサーバーで実行されます。
 
@@ -105,7 +104,6 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID="YOUR_PROJECT_ID"
 NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="YOUR_STORAGE_BUCKET"
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="YOUR_MESSAGING_SENDER_ID"
 NEXT_PUBLIC_FIREBASE_APP_ID="YOUR_APP_ID"
-NEXT_PUBLIC_FIREBASE_VAPID_KEY="YOUR_VAPID_KEY" # Webプッシュ通知 (FCM) に必須。Firebaseプロジェクト設定で生成。
 
 # Firebase Admin SDK (サーバーサイド用 - Next.js API Routes)
 # サービスアカウントキーのJSON内容を直接ここに貼り付けるか、ファイルパスを指定
