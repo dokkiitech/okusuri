@@ -22,7 +22,7 @@
 
 ```mermaid
 graph LR
-    subgraph User
+    subgraph User Interaction
         U[User]
     end
 
@@ -30,49 +30,49 @@ graph LR
         F(Next.js Frontend)
     end
 
-    subgraph Backend
-        A(Firebase Auth)
-        D(Firestore Database)
-        C(Next.js API Route - LINE Webhook)
-        L(LINE Handler)
-        G(Gemini AI)
-        S(Scheduler Script)
-        M(Firebase Cloud Messaging - FCM)
+    subgraph Backend Services
+        FA(Firebase Auth)
+        FD(Firestore Database)
+        NA(Next.js API Route - LINE Webhook)
+        LH(LINE Handler)
+        GA(Gemini AI)
+        SS(Scheduler Script)
+        FCM(Firebase Cloud Messaging)
     end
 
-    subgraph External Services
-        X(LINE Messaging API)
+    subgraph External APIs
+        LMA(LINE Messaging API)
     end
 
     U -- Web Browser/Mobile App --> F
-    U -- LINE App --> X
+    U -- LINE App --> LMA
 
-    F -- Auth/Data Save --> A
-    F -- Data Save/Retrieve --> D
-    F -- Push Notification Register --> M
+    F -- Auth/Data Save --> FA
+    F -- Data Save/Retrieve --> FD
+    F -- Push Notification Register --> FCM
 
-    X -- Webhook --> C
-    C -- Message Process/AI --> L
-    L -- Data Save/Retrieve --> D
-    L -- AI Query --> G
-    L -- Send LINE Message --> X
+    LMA -- Webhook --> NA
+    NA -- Message Process/AI --> LH
+    LH -- Data Save/Retrieve --> FD
+    LH -- AI Query --> GA
+    LH -- Send LINE Message --> LMA
 
-    S -- Data Retrieve --> D
-    S -- Send Push Notification --> M
+    SS -- Data Retrieve --> FD
+    SS -- Send Push Notification --> FCM
 
-    M -- Push Notification --> U
-    X -- LINE Notification --> U
+    FCM -- Push Notification --> U
+    LMA -- LINE Notification --> U
 
     style U fill:#e0f2f7,stroke:#0288d1,stroke-width:2px,color:#000
     style F fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
-    style A fill:#ffe0b2,stroke:#ef6c00,stroke-width:2px,color:#000
-    style D fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    style C fill:#e1f5fe,stroke:#039be5,stroke-width:2px,color:#000
-    style L fill:#e1f5fe,stroke:#039be5,stroke-width:2px,color:#000
-    style G fill:#c8e6c9,stroke:#4caf50,stroke-width:2px,color:#000
-    style S fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
-    style M fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
-    style X fill:#bbdefb,stroke:#2196f3,stroke-width:2px,color:#000
+    style FA fill:#ffe0b2,stroke:#ef6c00,stroke-width:2px,color:#000
+    style FD fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    style NA fill:#e1f5fe,stroke:#039be5,stroke-width:2px,color:#000
+    style LH fill:#e1f5fe,stroke:#039be5,stroke-width:2px,color:#000
+    style GA fill:#c8e6c9,stroke:#4caf50,stroke-width:2px,color:#000
+    style SS fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
+    style FCM fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
+    style LMA fill:#bbdefb,stroke:#2196f3,stroke-width:2px,color:#000
 ```
 
 **コンポーネントの説明:**
