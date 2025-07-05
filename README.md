@@ -21,31 +21,41 @@
 本アプリケーションは、以下の主要コンポーネントで構成されています。
 
 ```mermaid
-graph TD
-    A[ユーザー] -->|Webブラウザ/モバイルアプリ| B(Next.js フロントエンド)
-    A -->|LINEアプリ| C(LINE Messaging API)
-
-    B -->|認証/データ保存| D(Firebase Authentication)
-    B -->|データ保存/取得| E(Firestore Database)
-    B -->|プッシュ通知登録| F(Firebase Cloud Messaging - FCM)
-
-    C -->|Webhook| G(Next.js API Route - LINE Webhook)
-    G -->|メッセージ処理/AI連携| H(LINE Handler)
-    H -->|データ保存/取得| E
-    H -->|AI質問| I(Gemini AI)
-    H -->|LINEメッセージ送信| C
-
-    J(サーバーサイド リマインダースクリプト) -->|データ取得| E
-    J -->|プッシュ通知送信| F
-
-    F -->|プッシュ通知| A
-    C -->|LINE通知| A
-
-    subgraph Firebase
-        D
-        E
-        F
+graph LR
+    subgraph User Interface
+        A[📱 Client (Web/Mobile)]
     end
+
+    subgraph Infrastructure
+        B(🌐 CDN / Load Balancer)
+    end
+
+    subgraph Backend Services
+        C(🚀 Next.js App Server)
+        D(🔑 Firebase Authentication)
+        E(🔥 Firebase Functions / API)
+        F(🗄️ Firestore Database)
+        G(💬 LINE Messaging API)
+        H(🔔 Firebase Cloud Messaging)
+    end
+
+    A -- UI/Static Assets --> B
+    B -- Requests --> C
+    A -- Authentication --> D
+    A -- API Calls --> E
+    D -- Authenticates --> E
+    E -- Read/Write Data --> F
+    E -- Send LINE Message --> G
+    E -- Send Push Notification --> H
+
+    style A fill:#e0f2f7,stroke:#0288d1,stroke-width:2px,color:#000
+    style B fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000
+    style C fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
+    style D fill:#ffe0b2,stroke:#ef6c00,stroke-width:2px,color:#000
+    style E fill:#ffe0b2,stroke:#ef6c00,stroke-width:2px,color:#000
+    style F fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
+    style G fill:#e1f5fe,stroke:#039be5,stroke-width:2px,color:#000
+    style H fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px,color:#000
 ```
 
 **コンポーネントの説明:**
