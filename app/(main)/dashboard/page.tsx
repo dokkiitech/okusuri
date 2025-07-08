@@ -6,17 +6,16 @@ import { useAuth } from "@/contexts/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  Timestamp,
-  addDoc,
-  doc,
-  updateDoc,
-  serverTimestamp,
-  writeBatch,
+import { 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  Timestamp, 
+  addDoc, 
+  doc, 
+  updateDoc, 
+  serverTimestamp 
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { PlusCircle, CheckCircle2, XCircle, Clock, Check, Users, ArrowRight, Pill, CalendarDays, Bell, ChevronRight, ChevronLeft } from 'lucide-react'
@@ -33,9 +32,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { showCentralNotification } from "@/lib/notification.tsx"
+import { showCentralNotification } from "@/lib/notification"
+import { sendPushNotification } from "@/lib/notifications"
+import { sendLineMessage } from "@/lib/line-handler"
 import { AccountSwitcher } from "@/components/account-switcher"
 import { ErrorHandler } from "@/components/error-handler"
+
+const REMAINING_PILLS_THRESHOLD_DAYS = 3
 
 interface Medication {
   id: string
@@ -224,91 +227,88 @@ export default function DashboardPage() {
 
     setLoading(true)
     try {
-      const now = currentDate
-      const batch = writeBatch(db)
-      const newTodayRecords: MedicationRecord[] = [...todayRecords]
-      const updatedMedications = [...medications]
+      const response = await fetch("/api/medications/record-bulk", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          userId: selectedUserId, 
+          timing, 
+          medications, 
+          todayRecords, 
+          user 
+        }),
+      });
 
-      for (const med of medications) {
-        // Check if the medication is scheduled for this timing and hasn't been taken yet today
-        const alreadyTaken = todayRecords.some(
-          (r) => r.medicationId === med.id && r.scheduledTime === timing && r.status === "taken"
-        )
-
-        if (med.frequency.includes(timing) && !alreadyTaken) {
-          // Add record to batch
-          const recordRef = doc(collection(db, "medicationRecords"))
-          batch.set(recordRef, {
-            userId: selectedUserId,
-            medicationId: med.id,
-            medicationName: med.name,
-            status: "taken",
-            scheduledTime: timing,
-            takenAt: now,
-            createdAt: now,
-            recordedBy: user.uid,
-          })
-
-          // Update medication remaining pills and taken count
-          const newRemainingPills = Math.max(0, med.remainingPills - med.dosagePerTime)
-          const newTakenCount = med.takenCount + 1
-          const medRef = doc(db, "medications", med.id)
-          batch.update(medRef, {
-            remainingPills: newRemainingPills,
-            takenCount: newTakenCount,
-            updatedAt: serverTimestamp(),
-          })
-
-          // 残薬通知のロジック
-          const dosesPerDay = med.frequency.length * med.dosagePerTime;
-          if (dosesPerDay > 0) {
-            const remainingDays = newRemainingPills / dosesPerDay;
-            if (remainingDays <= REMAINING_PILLS_THRESHOLD_DAYS) {
-              const message = `${med.name}の残りが少なくなっています。残り約${Math.ceil(remainingDays)}日分です。`;
-              showCentralNotification(message);
-              sendPushNotification(user.uid, "残薬が少なくなっています", message);
-              // LINE連携しているユーザーにはLINEでも通知
-              if (user.lineUid) {
-                sendLineMessage(user.lineUid, message);
-              }
-            }
-          }
-
-          // Update local state for todayRecords
-          newTodayRecords.push({
-            id: recordRef.id,
-            userId: selectedUserId,
-            medicationId: med.id,
-            medicationName: med.name,
-            status: "taken",
-            scheduledTime: timing,
-            takenAt: { toDate: () => now } as Timestamp,
-            createdAt: { toDate: () => now } as Timestamp,
-          } as MedicationRecord)
-
-          // Update local state for medications
-          const medIndex = updatedMedications.findIndex((m) => m.id === med.id)
-          if (medIndex > -1) {
-            updatedMedications[medIndex] = {
-              ...updatedMedications[medIndex],
-              remainingPills: newRemainingPills,
-              takenCount: newTakenCount,
-            }
-          }
-        }
+      if (!response.ok) {
+        throw new Error('一括記録に失敗しました');
       }
 
-      await batch.commit()
+      // Refetch data to update the UI
+      const fetchData = async () => {
+        const medicationsQuery = query(collection(db, "medications"), where("userId", "==", selectedUserId))
+        const medicationsSnapshot = await getDocs(medicationsQuery)
+        const medicationsData = medicationsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Medication[]
 
-      setTodayRecords(newTodayRecords)
-      setMedications(updatedMedications)
+        const validatedMedications = medicationsData.map((med) => ({
+          ...med,
+          frequency: Array.isArray(med.frequency) ? med.frequency : [],
+          dosagePerTime: typeof med.dosagePerTime === "number" ? med.dosagePerTime : 1,
+          prescriptionDays: typeof med.prescriptionDays === "number" ? med.prescriptionDays : 0,
+          totalPills: typeof med.totalPills === "number" ? med.totalPills : 0,
+          remainingPills: typeof med.remainingPills === "number" ? med.remainingPills : 0,
+          takenCount: typeof med.takenCount === "number" ? med.takenCount : 0,
+        })).sort((a, b) => {
+          const dateA = a.createdAt ? a.createdAt.toDate().getTime() : 0
+          const dateB = b.createdAt ? b.createdAt.toDate().getTime() : 0
+          return dateB - dateA
+        })
 
-      const totalScheduledDoses = updatedMedications.reduce(
-        (sum, med) => sum + (Array.isArray(med.frequency) ? med.frequency.length : 0),
-        0
-      )
-      const takenDoses = newTodayRecords.filter((record) => record.status === "taken").length
-      setProgress(totalScheduledDoses > 0 ? Math.round((takenDoses / totalScheduledDoses) * 100) : 0)
+        setMedications(validatedMedications)
+
+        const startOfCurrentDate = startOfDay(currentDate)
+        const endOfCurrentDate = endOfDay(currentDate)
+
+        const recordsQuery = query(collection(db, "medicationRecords"), where("userId", "==", selectedUserId))
+        const recordsSnapshot = await getDocs(recordsQuery)
+        const allRecords = recordsSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as MedicationRecord[]
+
+        const todayRecordsData = allRecords
+          .filter((record) => {
+            if (!record.createdAt) return false
+            const recordDate =
+              record.createdAt instanceof Timestamp ? record.createdAt.toDate() : new Date(record.createdAt)
+
+            return isWithinInterval(recordDate, {
+              start: startOfCurrentDate,
+              end: endOfCurrentDate,
+            })
+          })
+          .sort((a, b) => {
+            const dateA = a.createdAt ? a.createdAt.toDate().getTime() : 0
+            const dateB = b.createdAt ? b.createdAt.toDate().getTime() : 0
+            return dateB - dateA
+          })
+
+        setTodayRecords(todayRecordsData)
+
+        const totalScheduledDosesToday = validatedMedications.reduce(
+          (sum, med) => sum + med.frequency.length,
+          0,
+        )
+        const takenDosesToday = todayRecordsData.filter((record) => record.status === "taken").length
+
+        setProgress(totalScheduledDosesToday > 0 ? Math.round((takenDosesToday / totalScheduledDosesToday) * 100) : 0)
+      };
+
+      await fetchData();
 
       showCentralNotification(`${timing}のすべてのお薬を服用済みとして記録しました`);
     } catch (error) {
