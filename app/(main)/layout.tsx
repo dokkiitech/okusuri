@@ -128,7 +128,7 @@ export default function MainLayout({
           <header className="fixed top-0 left-0 right-0 flex items-center justify-between h-16 px-4 bg-background/80 backdrop-blur-sm border-b z-40">
             <Link href="/dashboard" className="flex items-center gap-2">
               <PillIcon className="h-6 w-6 text-primary" />
-              <span className="font-bold">のむリズム</span>
+              <span className="font-bold">のむRhythm</span>
             </Link>
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
