@@ -5,6 +5,9 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/contexts/auth-context"
+import { LoadingProvider, useLoading } from "@/contexts/loading-context";
+import LoadingIcon from "@/components/LoadingIcon";
+import LoadingGate from "@/components/LoadingGate";
 
 const notoSansJp = Noto_Sans_JP({
   subsets: ["latin"],
@@ -30,21 +33,25 @@ export const viewport: Viewport = {
 }
 
 export default function RootLayout({
-                                     children,
-                                   }: Readonly<{
+  children,
+}: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-      <html lang="ja" suppressHydrationWarning>
+    <html lang="ja" suppressHydrationWarning>
       <body className={notoSansJp.className}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-        <AuthProvider>
-          {children}
-          <Toaster />
-        </AuthProvider>
-      </ThemeProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <LoadingProvider>
+            <AuthProvider>
+              <LoadingGate>
+                {children}
+              </LoadingGate>
+              <Toaster />
+            </AuthProvider>
+          </LoadingProvider>
+        </ThemeProvider>
       </body>
-      </html>
-  )
+    </html>
+  );
 }
 

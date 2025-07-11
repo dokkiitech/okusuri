@@ -37,6 +37,7 @@ import { sendPushNotification } from "@/lib/notifications"
 import { sendLineMessage } from "@/lib/line-handler"
 import { AccountSwitcher } from "@/components/account-switcher"
 import { ErrorHandler } from "@/components/error-handler"
+import { useLoading } from "@/contexts/loading-context";
 
 const REMAINING_PILLS_THRESHOLD_DAYS = 3
 
@@ -70,7 +71,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [medications, setMedications] = useState<Medication[]>([])
   const [todayRecords, setTodayRecords] = useState<MedicationRecord[]>([])
-  const [loading, setLoading] = useState(true)
+  const { setLoading } = useLoading();
   const [progress, setProgress] = useState(0)
   const [medicationToTake, setMedicationToTake] = useState<Medication | null>(null)
   const [selectedTiming, setSelectedTiming] = useState<string>("")
@@ -90,10 +91,9 @@ export default function DashboardPage() {
   }, [user])
 
   useEffect(() => {
-    if (!user || !db || !selectedUserId) return
-
+    if (!user || !db || !selectedUserId) return;
+    setLoading(true);
     const fetchData = async () => {
-      setLoading(true)
       try {
         const medicationsQuery = query(collection(db, "medications"), where("userId", "==", selectedUserId))
         const medicationsSnapshot = await getDocs(medicationsQuery)
@@ -159,12 +159,12 @@ export default function DashboardPage() {
         console.error("データの取得に失敗しました:", error)
         setError(error instanceof Error ? error : new Error(String(error)))
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
-    fetchData()
-  }, [user, db, selectedUserId, currentDate])
+    fetchData();
+  }, [user, db, selectedUserId, currentDate, setLoading]);
 
   const handleTakeMedication = async () => {
     if (!medicationToTake || !selectedTiming || !db || !user || isParentalView) return
@@ -326,14 +326,6 @@ export default function DashboardPage() {
 
   const nextDay = () => {
     setCurrentDate(addDays(currentDate, 1))
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
-      </div>
-    )
   }
 
   const formattedDate = format(currentDate, "M月d日 (eee)", { locale: ja })

@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useMobile } from "@/components/ui/use-mobile"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useLoading } from "@/contexts/loading-context";
 
 export default function MainLayout({
   children,
@@ -21,6 +22,7 @@ export default function MainLayout({
   const { user, loading, logout } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
+  const { setLoading } = useLoading();
   const isMobile = useMobile()
   const [isOpen, setIsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -34,6 +36,13 @@ export default function MainLayout({
       router.push("/login")
     }
   }, [user, loading, router])
+
+  useEffect(() => {
+    setLoading(true);
+    // ページ描画後にローディングを消す
+    const timeout = setTimeout(() => setLoading(false), 400); // 多少余裕を持たせる
+    return () => clearTimeout(timeout);
+  }, [pathname, setLoading]);
 
   const handleLogout = async () => {
     try {
@@ -51,14 +60,6 @@ export default function MainLayout({
     { href: "/calendar", label: "カレンダー", icon: Calendar },
     { href: "/settings", label: "設定", icon: Settings },
   ]
-
-  if (loading || !mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-primary"></div>
-      </div>
-    )
-  }
 
   if (!user) {
     return null
@@ -117,7 +118,8 @@ export default function MainLayout({
   }
 
   const pageTransition = {
-    type: "easeInOut",
+    type: "tween" as const,
+    ease: "easeInOut" as const,
     duration: 0.4,
   }
 

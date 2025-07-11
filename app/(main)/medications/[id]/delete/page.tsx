@@ -9,19 +9,20 @@ import { doc, getDoc, deleteDoc, collection, query, where, getDocs, writeBatch }
 import { db } from "@/lib/firebase"
 import { showCentralNotification } from "@/lib/notification.tsx"
 import { AlertTriangle, ArrowLeft, Loader2 } from "lucide-react"
+import { useLoading } from "@/contexts/loading-context";
 
 
 export default function DeleteMedicationPage({ params }: { params: { id: string } }) {
   const { user } = useAuth()
   const router = useRouter()
   const [medication, setMedication] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const { setLoading } = useLoading();
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!user || !params.id || !db) return
-
+    if (!user || !params.id || !db) return;
+    setLoading(true);
     const fetchAndAuthorizeMedication = async () => {
       try {
         const medicationDoc = await getDoc(doc(db, "medications", params.id))
@@ -59,17 +60,16 @@ export default function DeleteMedicationPage({ params }: { params: { id: string 
         console.error("お薬データの取得または権限の確認に失敗しました:", error)
         setError("お薬データの取得に失敗しました")
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
     fetchAndAuthorizeMedication()
-  }, [user, params.id, db])
+  }, [user, params.id, db, setLoading])
 
   const handleDelete = async () => {
-    if (!medication || !db || !user) return
-
-    setIsDeleting(true)
+    if (!medication || !db || !user) return;
+    setLoading(true);
     try {
       // 薬自体を削除
       await deleteDoc(doc(db, "medications", medication.id))
@@ -93,16 +93,8 @@ export default function DeleteMedicationPage({ params }: { params: { id: string 
 
       setError("お薬の削除に失敗しました: " + (error instanceof Error ? error.message : String(error)))
     } finally {
-      setIsDeleting(false)
+      setLoading(false);
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    )
   }
 
   if (error) {

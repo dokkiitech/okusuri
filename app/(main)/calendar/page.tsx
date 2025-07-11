@@ -42,8 +42,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { showCentralNotification } from "@/lib/notification.tsx"
+import { showCentralNotification } from "@/lib/notification";
 import { AccountSwitcher } from "@/components/account-switcher"
+import { useLoading } from "@/contexts/loading-context";
 
 interface Medication {
   id: string
@@ -75,12 +76,12 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [records, setRecords] = useState<MedicationRecord[]>([])
   const [medications, setMedications] = useState<Medication[]>([])
-  const [loading, setLoading] = useState(true)
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null)
-  const [medicationToTake, setMedicationToTake] = useState<Medication | null>(null)
-  const [selectedTiming, setSelectedTiming] = useState<string>("")
-  const [selectedUserId, setSelectedUserId] = useState<string>("")
-  const [isParentalView, setIsParentalView] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [medicationToTake, setMedicationToTake] = useState<Medication | null>(null);
+  const [selectedTiming, setSelectedTiming] = useState<string>("");
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [isParentalView, setIsParentalView] = useState(false);
+  const { setLoading } = useLoading();
 
   useEffect(() => {
     if (!user) return
@@ -88,10 +89,9 @@ export default function CalendarPage() {
   }, [user])
 
   useEffect(() => {
-    if (!user || !db || !selectedUserId) return
-
+    if (!user || !db || !selectedUserId) return;
+    setLoading(true);
     const fetchData = async () => {
-      setLoading(true)
       try {
         // 薬の情報を取得
         const medicationsQuery = query(collection(db, "medications"), where("userId", "==", selectedUserId))
@@ -147,12 +147,12 @@ export default function CalendarPage() {
         console.error("データの取得に失敗しました:", error)
         showCentralNotification("カレンダーデータの取得に失敗しました");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
 
     fetchData()
-  }, [user, currentMonth, db, selectedUserId])
+  }, [user, currentMonth, db, selectedUserId, setLoading])
 
   const previousMonth = () => {
     setCurrentMonth(subMonths(currentMonth, 1))
@@ -307,14 +307,6 @@ export default function CalendarPage() {
 
   const handleAccountChange = (userId: string) => {
     setSelectedUserId(userId)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    )
   }
 
   return (

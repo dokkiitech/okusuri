@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Checkbox } from "@/components/ui/checkbox"
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore"
 import { db } from "@/lib/firebase"
-import { showCentralNotification } from "@/lib/notification.tsx"
+import { showCentralNotification } from "@/lib/notification";
 import { ArrowLeft } from "lucide-react"
 
 const frequencyItems = [
@@ -56,6 +56,7 @@ export default function EditMedicationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [initialMedicationData, setInitialMedicationData] = useState<MedicationData | null>(null)
+  const [isOwner, setIsOwner] = useState(false);
 
   const form = useForm<MedicationFormValues>({
     resolver: zodResolver(medicationFormSchema),
@@ -74,7 +75,7 @@ export default function EditMedicationPage() {
     const fetchAndAuthorizeMedication = async () => {
       setIsLoading(true)
       try {
-        const medicationRef = doc(db, "medications", medicationId)
+        const medicationRef = doc(db!, "medications", medicationId)
         const medicationSnap = await getDoc(medicationRef)
 
         if (!medicationSnap.exists()) {
@@ -86,11 +87,12 @@ export default function EditMedicationPage() {
         const data = medicationSnap.data() as MedicationData
 
         // Authorization check
-        const isOwner = data.userId === user.uid
+        const isOwnerCheck = data.userId === user.uid
+        setIsOwner(isOwnerCheck);
         let isAuthorizedParent = false
 
-        if (!isOwner) {
-          const userSettingsRef = doc(db, "userSettings", user.uid)
+        if (!isOwnerCheck) {
+          const userSettingsRef = doc(db!, "userSettings", user.uid)
           const userSettingsSnap = await getDoc(userSettingsRef)
           if (userSettingsSnap.exists()) {
             const settings = userSettingsSnap.data()
@@ -100,7 +102,7 @@ export default function EditMedicationPage() {
           }
         }
 
-        if (isOwner || isAuthorizedParent) {
+        if (isOwnerCheck || isAuthorizedParent) {
           setInitialMedicationData(data)
           form.reset({
             name: data.name,
@@ -127,11 +129,11 @@ export default function EditMedicationPage() {
   }, [user, medicationId, form, router, db])
 
   const onSubmit = async (data: MedicationFormValues) => {
-    if (!user || !medicationId || !initialMedicationData || isParentAccount) return
+    if (!user || !medicationId || !initialMedicationData || !isOwner || !db) return
 
     setIsSubmitting(true)
     try {
-      const medicationRef = doc(db, "medications", medicationId)
+      const medicationRef = doc(db!, "medications", medicationId)
 
       // 処方日数、1回の服用数、服用タイミングの変更に応じて総錠数と残数を再計算
       // ただし、服用済み回数は考慮する

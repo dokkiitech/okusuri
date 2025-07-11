@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { PlusCircle, Edit, Trash2, PlusSquare, Check, Users } from "lucide-react"
-import { showCentralNotification } from "@/lib/notification.tsx"
+import { showCentralNotification } from "@/lib/notification";
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label"
 import { format } from "date-fns"
 import { ja } from "date-fns/locale"
 import { AccountSwitcher } from "@/components/account-switcher"
+import { useLoading } from "@/contexts/loading-context";
 
 interface Medication {
   id: string
@@ -54,7 +55,7 @@ export default function MedicationsPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [medications, setMedications] = useState<Medication[]>([])
-  const [loading, setLoading] = useState(true)
+  const { setLoading } = useLoading();
   const [medicationToDelete, setMedicationToDelete] = useState<string | null>(null)
   const [medicationToAddDays, setMedicationToAddDays] = useState<Medication | null>(null)
   const [additionalDays, setAdditionalDays] = useState<number>(14)
@@ -71,9 +72,8 @@ export default function MedicationsPage() {
 
   useEffect(() => {
     if (!user || !db || !selectedUserId) return
-
+    setLoading(true)
     const fetchMedications = async () => {
-      setLoading(true)
       try {
         const medicationsQuery = query(collection(db, "medications"), where("userId", "==", selectedUserId))
         const medicationsSnapshot = await getDocs(medicationsQuery)
@@ -121,7 +121,7 @@ export default function MedicationsPage() {
     }
 
     fetchMedications()
-  }, [user, db, selectedUserId])
+  }, [user, db, selectedUserId, setLoading])
 
   const handleAddMedication = () => {
     if (isParentalView) return
@@ -339,14 +339,6 @@ export default function MedicationsPage() {
 
   const handleAccountChange = (userId: string) => {
     setSelectedUserId(userId)
-  }
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    )
   }
 
   return (
