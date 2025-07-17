@@ -9,7 +9,11 @@ export interface UserSettings {
   }
   linkCode: string
   linkedAccounts: string[]
-  notificationsEnabled: boolean
+  notificationsEnabled: boolean // 後方互換性のため保持
+  notificationSettings: {
+    reminderNotifications: boolean // リマインダー通知（旧notificationsEnabled）
+    lowMedicationAlerts: boolean // 残量通知
+  }
   createdAt: Date
   updatedAt: Date
 }
@@ -18,13 +22,18 @@ export interface Medication {
   id: string
   userId: string
   name: string
-  dosage: string
+  dosage?: string
+  dosagePerTime: number
   frequency: string[] // 例: ["朝", "昼", "晩", "就寝前", "頓服"]
-  startDate: Date
+  prescriptionDays: number
+  totalPills: number
+  remainingPills: number
+  startDate?: Date
   endDate?: Date | null
   notes?: string
-  remainingCount?: number
-  totalCount?: number
+  remainingCount?: number // 後方互換性のため保持
+  totalCount?: number // 後方互換性のため保持
+  takenCount: number
   createdAt: Date
   updatedAt: Date
 }

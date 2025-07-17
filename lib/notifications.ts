@@ -1,9 +1,8 @@
-import * as admin from "firebase-admin";
 import { Client } from "@line/bot-sdk";
 import { Medication } from "./types";
+import { adminDb } from "./firebase-admin";
 
 // --- Configuration ---
-const SERVICE_ACCOUNT_KEY_PATH = process.env.GOOGLE_APPLICATION_CREDENTIALS || "./path/to/your/serviceAccountKey.json";
 const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!;
 const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN!;
 
@@ -11,18 +10,7 @@ const LINE_CHANNEL_ACCESS_TOKEN = process.env.LINE_CHANNEL_ACCESS_TOKEN!;
 const NOTIFICATION_TITLE = "服薬リマインダー";
 const NOTIFICATION_BODY = "お薬を飲む時間です";
 
-// --- Firebase Admin SDK Initialization ---
-try {
-  admin.initializeApp({
-    credential: admin.credential.cert(SERVICE_ACCOUNT_KEY_PATH),
-  });
-  console.log("Firebase Admin SDK initialized successfully.");
-} catch (error: any) {
-  console.error("Error initializing Firebase Admin SDK:", error.message);
-  // process.exit(1); // アプリケーション内で実行されるため、exitはしない
-}
-
-const db = admin.firestore();
+const db = adminDb;
 const lineClient = new Client({
   channelSecret: LINE_CHANNEL_SECRET,
   channelAccessToken: LINE_CHANNEL_ACCESS_TOKEN,
@@ -39,7 +27,7 @@ interface UserSetting {
 
 interface LineConnection {
   appUserId: string;
-  linkedAt: admin.firestore.Timestamp;
+  linkedAt: Date;
 }
 
 /**
@@ -162,25 +150,30 @@ async function sendLineNotification(
 export async function checkAndSendLowMedicationAlerts() {
   console.log("Checking for low medication alerts...");
   try {
-    const usersSnapshot = await db.collection("users").get(); // Assuming users collection exists
-    if (usersSnapshot.empty) {
-      console.log("No users found.");
+    // 残量通知が有効になっているユーザーのみを取得
+    const settingsSnapshot = await db
+      .collection("userSettings")
+      .where("notificationSettings.lowMedicationAlerts", "==", true)
+      .get();
+
+    if (settingsSnapshot.empty) {
+      console.log("No users with low medication alerts enabled found.");
       return;
     }
 
     const alertPromises: Promise<string>[] = [];
 
-    for (const userDoc of usersSnapshot.docs) {
-      const userId = userDoc.id;
+    for (const settingDoc of settingsSnapshot.docs) {
+      const userId = settingDoc.id;
       const medicationsSnapshot = await db.collection("medications").where("userId", "==", userId).get();
 
       for (const medicationDoc of medicationsSnapshot.docs) {
         const medication = medicationDoc.data() as Medication;
 
-        if (medication.remainingCount !== undefined && medication.frequency && medication.frequency.length > 0) {
+        if (medication.remainingPills !== undefined && medication.frequency && medication.frequency.length > 0) {
           // Assuming frequency.length represents daily intake count
-          const dailyIntake = medication.frequency.length;
-          const remainingDays = medication.remainingCount / dailyIntake;
+          const dailyIntake = medication.frequency.length * (medication.dosagePerTime || 1);
+          const remainingDays = medication.remainingPills / dailyIntake;
 
           if (remainingDays <= 10) {
             console.log(`Low medication alert for user ${userId}: ${medication.name} has ${remainingDays} days left.`);
@@ -222,7 +215,7 @@ export async function checkAndSendReminders() {
   try {
     const settingsSnapshot = await db
       .collection("userSettings")
-      .where("notificationsEnabled", "==", true)
+      .where("notificationSettings.reminderNotifications", "==", true)
       .get();
 
     if (settingsSnapshot.empty) {
