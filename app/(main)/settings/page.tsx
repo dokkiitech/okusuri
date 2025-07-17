@@ -17,7 +17,7 @@ import { toast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { generateLinkCode } from "@/lib/utils"
 import { Copy, Unlink } from "lucide-react"
-import { enablePushNotifications } from "@/lib/push-notification";
+// import { enablePushNotifications } from "@/lib/push-notification";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +52,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
+  const [lowMedicationAlertsEnabled, setLowMedicationAlertsEnabled] = useState(false)
   const [linkCode, setLinkCode] = useState("")
   const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
   const [inputLinkCode, setInputLinkCode] = useState("")
@@ -143,7 +144,9 @@ export default function SettingsPage() {
             setLinkedAccounts(linkedAccountsData)
           }
 
-          setNotificationsEnabled(settings.notificationsEnabled || false)
+          // 通知設定を初期化
+          setNotificationsEnabled(settings.notificationSettings?.reminderNotifications ?? settings.notificationsEnabled ?? false)
+          setLowMedicationAlertsEnabled(settings.notificationSettings?.lowMedicationAlerts ?? true)
         } else {
           // 設定がない場合は新しく作成
           const newLinkCode = generateLinkCode()
@@ -165,6 +168,10 @@ export default function SettingsPage() {
             linkCode: newLinkCode,
             linkedAccounts: [],
             notificationsEnabled: false,
+            notificationSettings: {
+              reminderNotifications: false,
+              lowMedicationAlerts: true,
+            },
             createdAt: new Date(),
             updatedAt: new Date(),
           })
@@ -491,7 +498,8 @@ export default function SettingsPage() {
         // Save the preference to Firestore first
         console.log("通知設定をFirestoreに保存します。enabled:", enabled);
         await updateDoc(doc(db, "userSettings", user.uid), {
-          notificationsEnabled: enabled,
+          notificationsEnabled: enabled, // 後方互換性のため保持
+          "notificationSettings.reminderNotifications": enabled,
           updatedAt: new Date(),
         });
         console.log("通知設定をFirestoreに保存しました:", enabled);
@@ -511,7 +519,7 @@ export default function SettingsPage() {
         console.error("通知設定の処理中にエラーが発生しました:", error);
         toast({
           title: "エラー",
-          description: `通知設定の更新に失敗しました: ${error.message || error}`, // エラーメッセージを表示
+          description: `通知設定の更新に失敗しました: ${error instanceof Error ? error.message : String(error)}`, // エラーメッセージを表示
           variant: "destructive",
         });
         setNotificationsEnabled(!enabled); // Revert UI on error
@@ -520,6 +528,52 @@ export default function SettingsPage() {
       console.warn("User object not available in handleNotificationToggle");
       toast({ title: "エラー", description: "ユーザー情報が見つかりません。", variant: "destructive" });
       setNotificationsEnabled(!enabled); // Revert UI
+    }
+  };
+
+  const handleLowMedicationAlertsToggle = async (enabled: boolean) => {
+    setLowMedicationAlertsEnabled(enabled); // Keep local state update for immediate UI feedback
+
+    if (user) { // Ensure user object is available
+      try {
+        if (!db) { // Ensure db is available
+          console.error("Firestore is not initialized");
+          toast({ title: "エラー", description: "データベースに接続できません。", variant: "destructive" });
+          setLowMedicationAlertsEnabled(!enabled); // Revert UI on error
+          return;
+        }
+        // Save the preference to Firestore first
+        console.log("残量通知設定をFirestoreに保存します。enabled:", enabled);
+        await updateDoc(doc(db, "userSettings", user.uid), {
+          "notificationSettings.lowMedicationAlerts": enabled,
+          updatedAt: new Date(),
+        });
+        console.log("残量通知設定をFirestoreに保存しました:", enabled);
+
+        if (enabled) {
+          toast({
+            title: "残量通知が有効になりました",
+            description: "お薬の残量が少なくなったら通知します。",
+          });
+        } else {
+          toast({
+            title: "残量通知が無効になりました",
+            description: "お薬の残量通知が無効になりました。",
+          });
+        }
+      } catch (error) {
+        console.error("残量通知設定の処理中にエラーが発生しました:", error);
+        toast({
+          title: "エラー",
+          description: `残量通知設定の更新に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+          variant: "destructive",
+        });
+        setLowMedicationAlertsEnabled(!enabled); // Revert UI on error
+      }
+    } else {
+      console.warn("User object not available in handleLowMedicationAlertsToggle");
+      toast({ title: "エラー", description: "ユーザー情報が見つかりません。", variant: "destructive" });
+      setLowMedicationAlertsEnabled(!enabled); // Revert UI
     }
   };
 
@@ -655,7 +709,7 @@ export default function SettingsPage() {
                       </label>
                       <p className="text-sm text-muted-foreground">お薬の残量が少なくなったら通知します</p>
                     </div>
-                    <Switch defaultChecked />
+                    <Switch checked={lowMedicationAlertsEnabled} onCheckedChange={handleLowMedicationAlertsToggle} />
                   </div>
                 </CardContent>
               </Card>
