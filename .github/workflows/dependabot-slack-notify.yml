@@ -1,0 +1,109 @@
+name: Dependabot Slack Notifications
+
+on:
+  pull_request:
+    types: [opened, closed, synchronize]
+  schedule:
+    # 毎日日本時間10:00に実行（dependabotの実行後）
+    - cron: '0 1 * * *'  # UTC 1:00 = JST 10:00
+
+jobs:
+  notify-dependabot-activity:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]' || github.event_name == 'schedule'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Dependabot PR status
+        id: pr-status
+        run: |
+          # Get all open dependabot PRs
+          OPEN_PRS=$(gh pr list --author "dependabot[bot]" --state open --json number,title,url,createdAt --limit 20)
+          
+          # Get recently merged dependabot PRs (last 24 hours)
+          MERGED_PRS=$(gh pr list --author "dependabot[bot]" --state merged --json number,title,url,mergedAt --limit 10)
+          
+          # Get recently closed dependabot PRs (last 24 hours)
+          CLOSED_PRS=$(gh pr list --author "dependabot[bot]" --state closed --json number,title,url,closedAt --limit 10)
+          
+          echo "open_prs=$OPEN_PRS" >> $GITHUB_OUTPUT
+          echo "merged_prs=$MERGED_PRS" >> $GITHUB_OUTPUT
+          echo "closed_prs=$CLOSED_PRS" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Format Slack message
+        id: format-message
+        run: |
+          OPEN_PRS='${{ steps.pr-status.outputs.open_prs }}'
+          MERGED_PRS='${{ steps.pr-status.outputs.merged_prs }}'
+          CLOSED_PRS='${{ steps.pr-status.outputs.closed_prs }}'
+          
+          # Count PRs
+          OPEN_COUNT=$(echo "$OPEN_PRS" | jq '. | length')
+          MERGED_COUNT=$(echo "$MERGED_PRS" | jq '. | length')
+          CLOSED_COUNT=$(echo "$CLOSED_PRS" | jq '. | length')
+          
+          # Build message
+          MESSAGE="🤖 *Dependabot Daily Report* - $(date '+%Y-%m-%d %H:%M JST')\\n\\n"
+          
+          if [ "$OPEN_COUNT" -gt 0 ]; then
+            MESSAGE+="📋 *Open PRs ($OPEN_COUNT):*\\n"
+            MESSAGE+=$(echo "$OPEN_PRS" | jq -r '.[] | "• <\(.url)|\(.title)> (Created: \(.createdAt | split("T")[0]))"' | head -10)
+            MESSAGE+="\\n\\n"
+          fi
+          
+          if [ "$MERGED_COUNT" -gt 0 ]; then
+            MESSAGE+="✅ *Recently Merged PRs ($MERGED_COUNT):*\\n"
+            MESSAGE+=$(echo "$MERGED_PRS" | jq -r '.[] | "• <\(.url)|\(.title)> (Merged: \(.mergedAt | split("T")[0]))"' | head -5)
+            MESSAGE+="\\n\\n"
+          fi
+          
+          if [ "$CLOSED_COUNT" -gt 0 ]; then
+            MESSAGE+="❌ *Recently Closed PRs ($CLOSED_COUNT):*\\n"
+            MESSAGE+=$(echo "$CLOSED_PRS" | jq -r '.[] | "• <\(.url)|\(.title)> (Closed: \(.closedAt | split("T")[0]))"' | head -5)
+            MESSAGE+="\\n\\n"
+          fi
+          
+          if [ "$OPEN_COUNT" -eq 0 ] && [ "$MERGED_COUNT" -eq 0 ] && [ "$CLOSED_COUNT" -eq 0 ]; then
+            MESSAGE+="✨ No dependabot activity in the last 24 hours\\n"
+          fi
+          
+          MESSAGE+="Repository: ${{ github.repository }}\\n"
+          MESSAGE+="Branch: ${{ github.ref_name }}"
+          
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+
+      - name: Send Slack notification
+        if: github.event_name == 'schedule' || (github.event_name == 'pull_request' && github.actor == 'dependabot[bot]')
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "${{ steps.format-message.outputs.message }}",
+              channel: "${{ secrets.SLACK_CHANNEL }}",
+              username: "Dependabot Reporter",
+              icon_emoji: ":robot_face:"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send PR-specific notification
+        if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "🔄 *Dependabot PR ${{ github.event.action }}:*\\n• <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\\n• Status: ${{ github.event.action }}\\n• Repository: ${{ github.repository }}",
+              channel: "${{ secrets.SLACK_CHANNEL }}",
+              username: "Dependabot Reporter",
+              icon_emoji: ":robot_face:"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} 
