@@ -49,32 +49,32 @@ jobs:
           CLOSED_COUNT=$(echo "$CLOSED_PRS" | jq '. | length')
           
           # Build message
-          MESSAGE="🤖 *Dependabot Daily Report* - $(date '+%Y-%m-%d %H:%M JST')\\n\\n"
+          MESSAGE="🐱 *Dependabot 日次レポートだにゃん* - $(date '+%Y-%m-%d %H:%M JST')\\n\\n"
           
           if [ "$OPEN_COUNT" -gt 0 ]; then
-            MESSAGE+="📋 *Open PRs ($OPEN_COUNT):*\\n"
-            MESSAGE+=$(echo "$OPEN_PRS" | jq -r '.[] | "• <\(.url)|\(.title)> (Created: \(.createdAt | split("T")[0]))"' | head -10)
+            MESSAGE+="📋 *オープンなPRがあるにゃ ($OPEN_COUNT件):*\\n"
+            MESSAGE+=$(echo "$OPEN_PRS" | jq -r '.[] | "• <\(.url)|\(.title)> (作成日: \(.createdAt | split("T")[0]))"' | head -10)
             MESSAGE+="\\n\\n"
           fi
           
           if [ "$MERGED_COUNT" -gt 0 ]; then
-            MESSAGE+="✅ *Recently Merged PRs ($MERGED_COUNT):*\\n"
-            MESSAGE+=$(echo "$MERGED_PRS" | jq -r '.[] | "• <\(.url)|\(.title)> (Merged: \(.mergedAt | split("T")[0]))"' | head -5)
+            MESSAGE+="✅ *最近マージされたPRだにゃん ($MERGED_COUNT件):*\\n"
+            MESSAGE+=$(echo "$MERGED_PRS" | jq -r '.[] | "• <\(.url)|\(.title)> (マージ日: \(.mergedAt | split("T")[0]))"' | head -5)
             MESSAGE+="\\n\\n"
           fi
           
           if [ "$CLOSED_COUNT" -gt 0 ]; then
-            MESSAGE+="❌ *Recently Closed PRs ($CLOSED_COUNT):*\\n"
-            MESSAGE+=$(echo "$CLOSED_PRS" | jq -r '.[] | "• <\(.url)|\(.title)> (Closed: \(.closedAt | split("T")[0]))"' | head -5)
+            MESSAGE+="❌ *最近クローズされたPRだにゃ ($CLOSED_COUNT件):*\\n"
+            MESSAGE+=$(echo "$CLOSED_PRS" | jq -r '.[] | "• <\(.url)|\(.title)> (クローズ日: \(.closedAt | split("T")[0]))"' | head -5)
             MESSAGE+="\\n\\n"
           fi
           
           if [ "$OPEN_COUNT" -eq 0 ] && [ "$MERGED_COUNT" -eq 0 ] && [ "$CLOSED_COUNT" -eq 0 ]; then
-            MESSAGE+="✨ No dependabot activity in the last 24 hours\\n"
+            MESSAGE+="😴 昨日はdependabotが静かだったにゃ〜\\n特に活動はなかったみたいだにゃん\\n"
           fi
           
-          MESSAGE+="Repository: ${{ github.repository }}\\n"
-          MESSAGE+="Branch: ${{ github.ref_name }}"
+          MESSAGE+="📁 リポジトリ: ${{ github.repository }}\\n"
+          MESSAGE+="🌿 ブランチ: ${{ github.ref_name }}"
           
           echo "message=$MESSAGE" >> $GITHUB_OUTPUT
 
@@ -86,9 +86,8 @@ jobs:
           custom_payload: |
             {
               text: "${{ steps.format-message.outputs.message }}",
-              channel: "${{ secrets.SLACK_CHANNEL }}",
-              username: "Dependabot Reporter",
-              icon_emoji: ":robot_face:"
+              username: "Dependabot にゃんこ",
+              icon_emoji: ":cat:"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
@@ -100,10 +99,9 @@ jobs:
           status: custom
           custom_payload: |
             {
-              text: "🔄 *Dependabot PR ${{ github.event.action }}:*\\n• <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\\n• Status: ${{ github.event.action }}\\n• Repository: ${{ github.repository }}",
-              channel: "${{ secrets.SLACK_CHANNEL }}",
-              username: "Dependabot Reporter",
-              icon_emoji: ":robot_face:"
+              text: "🐾 *Dependabot からお知らせだにゃん:*\\n• <${{ github.event.pull_request.html_url }}|${{ github.event.pull_request.title }}>\\n• ステータス: ${{ github.event.action == 'opened' && 'PR作成されたにゃ！' || github.event.action == 'closed' && 'PRがクローズされたにゃ' || github.event.action == 'synchronize' && 'PR更新されたにゃん' || github.event.action }}\\n• 📁 リポジトリ: ${{ github.repository }}",
+              username: "Dependabot にゃんこ",
+              icon_emoji: ":cat:"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} 
