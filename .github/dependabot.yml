@@ -14,8 +14,8 @@ updates:
       - "dependencies"
       - "javascript"
     commit-message:
-      prefix: "chore"
-      prefix-development: "chore"
+      prefix: "🐱 にゃん"
+      prefix-development: "🐱 にゃん-dev"
       include: "scope"
     # Group minor and patch updates together
     groups:
