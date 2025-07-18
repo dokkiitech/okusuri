@@ -695,9 +695,9 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between space-x-2">
                     <div className="space-y-0.5">
                       <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        ブラウザ通知
+                        LINE通知
                       </label>
-                      <p className="text-sm text-muted-foreground">服薬時間になったらブラウザ通知を表示します</p>
+                      <p className="text-sm text-muted-foreground">服薬時間になったらLINEに通知を送信します</p>
                     </div>
                     <Switch checked={notificationsEnabled} onCheckedChange={handleNotificationToggle} />
                   </div>
