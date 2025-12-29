@@ -13,7 +13,7 @@ importers:
         version: 0.24.1
       '@hookform/resolvers':
         specifier: latest
-        version: 5.2.1(react-hook-form@7.62.0(react@19.0.0))
+        version: 5.2.2(react-hook-form@7.69.0(react@19.0.0))
       '@line/bot-sdk':
         specifier: ^10.0.0
         version: 10.0.0
@@ -151,7 +151,7 @@ importers:
         version: 19.0.0(react@19.0.0)
       react-hook-form:
         specifier: latest
-        version: 7.62.0(react@19.0.0)
+        version: 7.69.0(react@19.0.0)
       react-resizable-panels:
         specifier: ^2.1.7
         version: 2.1.7(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -172,7 +172,7 @@ importers:
         version: 0.9.9(@types/react-dom@19.0.4(@types/react@19.0.11))(@types/react@19.0.11)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       zod:
         specifier: latest
-        version: 4.0.17
+        version: 4.2.1
     devDependencies:
       '@types/node':
         specifier: ^22
@@ -191,7 +191,7 @@ importers:
         version: 3.4.17
       typescript:
         specifier: ^5
-        version: 5.9.2
+        version: 5.9.3
 
 packages:
 
@@ -471,8 +471,8 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  '@hookform/resolvers@5.2.1':
-    resolution: {integrity: sha512-u0+6X58gkjMcxur1wRWokA7XsiiBJ6aK17aPZxhkoYiK5J+HcTx0Vhu9ovXe6H+dVpO6cjrn2FkJTryXEMlryQ==}
+  '@hookform/resolvers@5.2.2':
+    resolution: {integrity: sha512-A/IxlMLShx3KjV/HeTcTfaMxdwy690+L/ZADoeaTltLx+CVuzkeVIPuybK3jrRfw7YZnmdKsVVHAlEPIAEUNlA==}
     peerDependencies:
       react-hook-form: ^7.55.0
 
@@ -2106,6 +2106,7 @@ packages:
   next@15.1.0:
     resolution: {integrity: sha512-QKhzt6Y8rgLNlj30izdMbxAwjHMFANnLwDwZ+WQh5sMhyt4lEBqDK9QpvWHtIM4rINKPoJ8aiRZKg5ULSybVHw==}
     engines: {node: ^18.18.0 || ^19.8.0 || >= 20.0.0}
+    deprecated: This version has a security vulnerability. Please upgrade to a patched version. See https://nextjs.org/blog/CVE-2025-66478 for more details.
     hasBin: true
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
@@ -2269,8 +2270,8 @@ packages:
     peerDependencies:
       react: ^19.0.0
 
-  react-hook-form@7.62.0:
-    resolution: {integrity: sha512-7KWFejc98xqG/F4bAxpL41NB3o1nnvQO1RWZT3TqRZYL8RryQETGfEdVnJN2fy1crCiBLLjkRBVK05j24FxJGA==}
+  react-hook-form@7.69.0:
+    resolution: {integrity: sha512-yt6ZGME9f4F6WHwevrvpAjh42HMvocuSnSIHUGycBqXIJdhqGSPQzTpGF+1NLREk/58IdPxEMfPcFCjlMhclGw==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -2518,8 +2519,8 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
-  typescript@5.9.2:
-    resolution: {integrity: sha512-CWBzXQrc/qOkhidw1OzBTQuYRbfyxDXJMVJ1XNwUHGROVmuaeiEm3OslpZ1RV96d7SKKjZKrSJu3+t/xlw3R9A==}
+  typescript@5.9.3:
+    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -2638,8 +2639,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod@4.0.17:
-    resolution: {integrity: sha512-1PHjlYRevNxxdy2JZ8JcNAw7rX8V9P1AKkP+x/xZfxB0K5FYfuV+Ug6P/6NVSR2jHQ+FzDDoDHS04nYUsOIyLQ==}
+  zod@4.2.1:
+    resolution: {integrity: sha512-0wZ1IRqGGhMP76gLqz8EyfBXKk0J2qo2+H3fi4mcUP/KtTocoX08nmIAHl1Z2kJIZbZee8KOpBCSNPRgauucjw==}
 
 snapshots:
 
@@ -3057,10 +3058,10 @@ snapshots:
       protobufjs: 7.4.0
       yargs: 17.7.2
 
-  '@hookform/resolvers@5.2.1(react-hook-form@7.62.0(react@19.0.0))':
+  '@hookform/resolvers@5.2.2(react-hook-form@7.69.0(react@19.0.0))':
     dependencies:
       '@standard-schema/utils': 0.3.0
-      react-hook-form: 7.62.0(react@19.0.0)
+      react-hook-form: 7.69.0(react@19.0.0)
 
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
@@ -4951,7 +4952,7 @@ snapshots:
       react: 19.0.0
       scheduler: 0.25.0
 
-  react-hook-form@7.62.0(react@19.0.0):
+  react-hook-form@7.69.0(react@19.0.0):
     dependencies:
       react: 19.0.0
 
@@ -5247,7 +5248,7 @@ snapshots:
 
   tslib@2.8.1: {}
 
-  typescript@5.9.2: {}
+  typescript@5.9.3: {}
 
   undici-types@6.20.0: {}
 
@@ -5368,4 +5369,4 @@ snapshots:
   yocto-queue@0.1.0:
     optional: true
 
-  zod@4.0.17: {}
+  zod@4.2.1: {}
